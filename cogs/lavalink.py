@@ -116,7 +116,7 @@ class Lavalink(commands.Cog):
             await player.disconnect()
 
     @commands.command()
-    async def lplay(self, ctx: commands.Context, *, search: typing.Union[wavelink.YouTubeTrack, wavelink.YouTubeMusicTrack, wavelink.SoundCloudTrack]=None, loop: bool=False, sponsorblock: bool=True):
+    async def play(self, ctx: commands.Context, *, search: typing.Union[wavelink.YouTubeTrack, wavelink.YouTubeMusicTrack, wavelink.SoundCloudTrack]=None, loop: bool=False, sponsorblock: bool=True):
         """Play a song with the given search query.
 
         If not connected, connect to our voice channel.
@@ -148,7 +148,7 @@ class Lavalink(commands.Cog):
                 vc.play(next)
     
     @commands.command()
-    async def lpause(self, ctx: commands.Context):
+    async def pause(self, ctx: commands.Context):
         if not ctx.voice_client:
             return
         vc: wavelink.Player = ctx.voice_client
@@ -160,7 +160,7 @@ class Lavalink(commands.Cog):
             await vc.pause()
     
     @commands.command()
-    async def lresume(self, ctx: commands.Context):
+    async def resume(self, ctx: commands.Context):
         if(not ctx.voice_client):
             return
         vc: wavelink.Player = ctx.voice_client
@@ -172,7 +172,7 @@ class Lavalink(commands.Cog):
             await vc.resume()
     
     @commands.command()
-    async def lstop(self, ctx: commands.Context):
+    async def stop(self, ctx: commands.Context):
         if(not ctx.voice_client):
             return
         vc: wavelink.Player = ctx.voice_client
@@ -186,7 +186,7 @@ class Lavalink(commands.Cog):
             await vc.disconnect()
 
     @commands.command()
-    async def lskip(self, ctx: commands.Context):
+    async def skip(self, ctx: commands.Context):
         if(not ctx.voice_client):
             return
         vc: wavelink.Player = ctx.voice_client
@@ -195,7 +195,7 @@ class Lavalink(commands.Cog):
         await vc.stop()
     
     @commands.command()
-    async def lvolume(self, ctx: commands.Context, volume: float=100.0):
+    async def volume(self, ctx: commands.Context, volume: float=100.0):
         if(not ctx.voice_client):
             return
         vc: wavelink.Player = ctx.voice_client
@@ -204,7 +204,7 @@ class Lavalink(commands.Cog):
         await vc.set_volume(volume)
     
     @commands.command()
-    async def lseek(self, ctx: commands.Context, position: float):
+    async def seek(self, ctx: commands.Context, position: float):
         if(not ctx.voice_client):
             return
         vc: wavelink.Player = ctx.voice_client
@@ -212,7 +212,7 @@ class Lavalink(commands.Cog):
             return
         await vc.seek(position*1000)
     
-    @lplay.before_invoke
+    @play.before_invoke
     async def ensure_queue(self, ctx: commands.Context):
         self.wavequeue[ctx.guild] = wavelink.Queue()
     
