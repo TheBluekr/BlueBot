@@ -2,25 +2,31 @@ import discord
 from discord.ext import commands
 import os
 import logging
+import asyncio
 
 ch = logging.StreamHandler()
 ch.setLevel(logging.INFO)
-formatter = logging.Formatter('%(asctime)-19s | %(levelname)-8s | %(name)-16s | %(message)-s', "%d-%m-%Y %H:%M:%S")
+formatter = logging.Formatter('%(asctime)-19s | %(levelname)-8s | %(name)-26s | %(message)-s', "%d-%m-%Y %H:%M:%S")
 ch.setFormatter(formatter)
 
+fh = logging.FileHandler("logs.txt", mode="w")
+fh.setLevel(logging.DEBUG)
+fh.setFormatter(formatter)
+
 logger = logging.getLogger()
-logger.setLevel(logging.INFO)
+logger.setLevel(logging.DEBUG)
 logger.addHandler(ch)
+logger.addHandler(fh)
 
 discordLogger = logging.getLogger('discord')
 discordLogger.setLevel(logging.WARNING)
 
 __author__ = "TheBluekr#2702"
-__cogname__ = "bluebot.cogs.music"
+__cogname__ = "bluebot.main"
 
-class Main(commands.Cog):
-    def __init__(self, bot):
-        self.bot = bot
+class Bot(commands.Bot):
+    def __init__(self):
+        super().__init__(command_prefix=os.getenv("PREFIX"), intents=discord.Intents.all())
         self.logger = logging.getLogger(f"{__cogname__}")
         self.logger.setLevel(logging.INFO)
         self.logger.info(f"Loaded {__cogname__}")
@@ -29,17 +35,17 @@ class Main(commands.Cog):
     
     @commands.Cog.listener()
     async def on_ready(self):
-        self.logger.info(f"Logged in as {self.bot.user.name}")
+        self.logger.info(f"Logged in as {self.user.name}")
         for cog in os.listdir(r"cogs"): # Loop through each file in your "cogs" directory.
             if cog.endswith(".py"):
                 try:
                     cog = f"cogs.{cog.replace('.py', '')}"
-                    self.bot.load_extension(cog) # Load the file as an extension.
+                    await self.load_extension(cog)
                 except Exception as e:
                     print(f"{cog} is failed to load:")
                     raise e
 
-bot = commands.Bot(command_prefix=os.getenv("PREFIX"), intents=discord.Intents.all())
+bot = Bot()
+bot.run(os.getenv("TOKEN"), log_handler=None)
 
-bot.add_cog(Main(bot))
-bot.run(os.getenv("TOKEN"))
+#asyncio.run(boot())

@@ -2,12 +2,14 @@ import discord
 import asyncio
 import aiohttp
 import os
+from discord.errors import InvalidData
 
 import youtube_dl
 import re
 import json
+import datetime
 
-from discord.ext import commands
+from discord.ext import commands, tasks
 
 import logging
 import random
@@ -24,10 +26,7 @@ ytdl_format_options = {
     'restrictfilenames': True,
     'noplaylist': True,
     'nocheckcertificate': True,
-    'ignoreerrors': False,
-    'logtostderr': False,
-    'quiet': True,
-    'no_warnings': True,
+    'logger': logger,
     'default_search': 'auto',
     'source_address': '0.0.0.0' # bind to ipv4 since ipv6 addresses cause issues sometimes
 }
@@ -59,6 +58,8 @@ class YTDLSource(discord.PCMVolumeTransformer):
         filename = data['url'] if stream else ytdl.prepare_filename(data)
         return cls(discord.FFmpegPCMAudio(filename, **ffmpeg_options), data=data)
 
+class InvalidKey(Exception):
+    pass
 
 class Youtube:
     def __init__(self, session: aiohttp.ClientSession):
@@ -98,11 +99,23 @@ class Youtube:
         return True
 
 class Video:
-    def __init__(self, user, url, title=None, description=None):
+    def __init__(self, user, url, title=None, description=None, duration=None):
         self.user = user
         self.url = url
         self.title = title
         self.description = description
+        #search = re.search(r"^P([0-9]{0,2}D)?T([0-9]{0,2}H)?([0-9]{0,2}M)?([0-9]{0,2})(?:S)$", duration)
+        # Really hacky method of finding days, h:m:s when it doesn't always format like that... ISO 8601 sucks
+        #duration = 0
+        #if search.group(1) != None:
+        #    duration += int(search.group(1).strip("D"))*24*60*60
+        #if search.group(2) != None:
+        #    duration += int(search.group(2).strip("H"))*60*60
+        #if search.group(3) != None:
+        #    duration += int(search.group(3).strip("M"))*60
+        #if search.group(4) != None:
+        #    duration += int(search.group(4).strip("S"))
+        self.duration = duration
     def __str__(self):
         return self.url
 
@@ -114,29 +127,24 @@ class Music(commands.Cog):
 
         self.session = aiohttp.ClientSession()
         self.yt = None
-        loop = asyncio.get_event_loop()
-        loop.create_task(self.load_yt())
+        self.async_init.start()
 
         self._volume = {}
         
         self.currPlaying = {}
         self.soundTrack = {}
+        self.endTime = {}
+        self.attempts = {}
+        self.stopSong = {}
 
-        self.embedColors = {121546822765248512:int("0x0066BB", 0), 168463608580276224:int("0x0066BB", 0), 103215649530077184:int("0x10DF19", 0)}
+        self.playlistFile = f"{os.getcwd()}/settings/music.playlist.json"
+        self.embedFile = f"{os.getcwd()}/settings/music.embed.json"
+
+        self.embedColors = {}
 
         self.exceptionNotConnected = "Currently not connected to a voice channel"
         self.exceptionNotPlaying = "There's nothing playing currently"
         self.exceptionAlreadyPlaying = "There's already something playing currently"
-    
-    async def load_yt(self):
-        yt = Youtube(self.session)
-        if(await yt.validate_key()):
-            self.yt = yt
-            self.logger.info("Youtube API Key validation passed")
-            await self.read_playlist()
-        else:
-            self.logger.warning("Youtube API Key validation didn't pass, unloading cog")
-            self.bot.unload_extension(f'cogs.{os.path.basename(__file__)}')
     
     def cog_unload(self):
         self.logger.info("Cog was unloaded")
@@ -144,6 +152,19 @@ class Music(commands.Cog):
             self.logger.info("Stopping aiohttp session")
             fut = asyncio.ensure_future(self.session.close())
             yield from fut.__await__()
+    
+    @tasks.loop(count=1)
+    async def async_init(self):
+        await self.read_playlist()
+        await self.read_embed_colors()
+
+    @async_init.before_loop
+    async def before_yt(self):
+        self.yt = Youtube(self.session)
+        if(await self.yt.validate_key()):
+            self.logger.info("Youtube API Key validation passed")
+        else:
+            raise InvalidKey("Youtube API Key validation didn't pass")
     
     @commands.command()
     async def add(self, ctx, arg):
@@ -154,7 +175,7 @@ class Music(commands.Cog):
             url = regex.group(1)
         video = await self.parse_video(ctx.author, url)
         embed = self.create_embed(ctx.author.id)
-        embed.set_footer(text=f"Requested by: {ctx.author}", icon_url=ctx.author.avatar_url)
+        embed.set_footer(text=f"Requested by: {ctx.author}", icon_url=ctx.author.display_avatar.url)
         if(video != None):
             self.soundTrack[ctx.guild.id].append(video)
             embed.description = f"**Added**:\n**[{video.title}](https://www.youtube.com/watch?v={video.url} '{video.url}')**"
@@ -170,26 +191,35 @@ class Music(commands.Cog):
         index = int(arg)-1
         try:
             video = self.soundTrack[ctx.guild.id].pop(index)
-            embed.set_author(name=f"{ctx.author}", icon_url=ctx.author.avatar_url)
+            embed.set_author(name=f"{ctx.author}", icon_url=ctx.author.display_avatar.url)
             embed.description = f"**Removed**:\n**[{video.title}](https://www.youtube.com/watch?v={video.url} '{video.url}')**"
-            #embed.set_footer(text=f"Requested by: {video.user}", icon_url=video.user.avatar_url)
+            #embed.set_footer(text=f"Requested by: {video.user}", icon_url=video.user.display_avatar.url)
         except IndexError:
             embed.description = f"Invalid index given"
         await ctx.send(embed=embed)
         await self.write_playlist()
     
     @commands.command(aliases=["p"])
-    async def play(self, ctx):
+    async def play(self, ctx, url: str=None):
+        if(url != None):
+            await self.add(ctx, url)
         vc = ctx.voice_client
-        if(vc.is_playing()):
+        if(vc.is_playing() and url == None):
             return await ctx.send(self.exceptionAlreadyPlaying)
         if(vc.is_paused()):
             return vc.resume()
-        if(len(self.soundTrack[ctx.guild.id]) == 0):
-            self.currPlaying[ctx.guild.id] = None
+        self.attempts[ctx.guild.id] = 0
+        await self.play_song(ctx)
+    
+    async def play_song(self, ctx):
+        vc = ctx.voice_client
+        if(len(self.soundTrack[ctx.guild.id]) == 0 and self.currPlaying[ctx.guild.id] == None):
             await self.disconnect_safe(vc)
         
         self.currPlaying[ctx.guild.id] = self.soundTrack[ctx.guild.id].pop(0)
+        #self.endTime[ctx.guild.id] = datetime.datetime.now() + datetime.timedelta(seconds=self.currPlaying[ctx.guild.id].duration)
+        self.endTime[ctx.guild.id] = datetime.datetime.now() + datetime.timedelta(seconds=2)
+
         player = await YTDLSource.from_url(self.currPlaying[ctx.guild.id].url, loop=self.bot.loop, stream=True)
         player.volume = self._volume[ctx.guild.id]
 
@@ -199,22 +229,34 @@ class Music(commands.Cog):
         embed = self.create_embed(self.currPlaying[ctx.guild.id].user.id)
         if self.currPlaying[ctx.guild.id].title != None:
             embed.description = f"**Started playing:**\n**[{self.currPlaying[ctx.guild.id].title}](https://www.youtube.com/watch?v={self.currPlaying[ctx.guild.id].url} '{self.currPlaying[ctx.guild.id].url}')**"
-        embed.set_footer(text=f"Requested by: {self.currPlaying[ctx.guild.id].user}", icon_url=self.currPlaying[ctx.guild.id].user.avatar_url)
+        embed.set_footer(text=f"Requested by: {self.currPlaying[ctx.guild.id].user}", icon_url=self.currPlaying[ctx.guild.id].user.display_avatar.url)
         await ctx.send(embed=embed)
         await self.write_playlist()
     
     def finish(self, ctx, err):
-        if err != None:
+        if(self.endTime[ctx.guild.id] > datetime.datetime.now() and err != None and not self.stopSong.get(ctx.guild.id, False)):
+            # Potential bug fix, replay the song if it ended prematurely...
+            self.soundTrack[ctx.guild.id].insert(0, self.currPlaying[ctx.guild.id])
+            self.attempts[ctx.guild.id] += 1
+            self.logger.warning("Song ended prematurely for unknown reasons, attempting to replay")
+        self.currPlaying[ctx.guild.id] = None
+        if err != None and self.attempts[ctx.guild.id] >= 3:
+            self.logger.error(err)
             vc = ctx.voice_client
-            self.currPlaying[ctx.guild.id] = None
             #self.soundTrack[ctx.guild.id] = []
             fut = asyncio.run_coroutine_threadsafe(self.disconnect_safe(vc), self.bot.loop)
             try:
                 fut.result()
             except:
                 pass
+            fut = asyncio.run_coroutine_threadsafe(ctx.send(f"Error occured:\n{err}"), self.bot.loop)
+            try:
+                fut.result()
+            except:
+                pass
         else:
-            fut = asyncio.run_coroutine_threadsafe(ctx.invoke(self.bot.get_command("play")), self.bot.loop)
+            self.attempts[ctx.guild.id] = 0
+            fut = asyncio.run_coroutine_threadsafe(self.play_song(ctx), self.bot.loop)
             try:
                 fut.result()
             except:
@@ -227,6 +269,7 @@ class Music(commands.Cog):
             return
         self.currPlaying[ctx.guild.id] = None
         self.soundTrack[ctx.guild.id] = []
+        self.stopSong[ctx.guild.id] = True
         vc.stop()
 
     @commands.command()
@@ -258,6 +301,8 @@ class Music(commands.Cog):
         if vc == None:
             return
         await ctx.send(f"Skipping {self.currPlaying[ctx.guild.id].title}")
+        self.currPlaying[ctx.guild.id] = None
+        self.stopSong[ctx.guild.id] = True
         vc.stop()
     
     @commands.command(aliases=["now", "curr"])
@@ -270,15 +315,13 @@ class Music(commands.Cog):
             embed.color = self.embedColors.get(self.currPlaying[ctx.guild.id].user.id, int("0xFF0000", 0))
             if self.currPlaying[ctx.guild.id].title != None:
                 embed.description = f"**Currently playing:**\n**[{self.currPlaying[ctx.guild.id].title}](https://www.youtube.com/watch?v={self.currPlaying[ctx.guild.id].url} '{self.currPlaying[ctx.guild.id].url}')**"
-            embed.set_footer(text=f"Requested by: {self.currPlaying[ctx.guild.id].user}", icon_url=self.currPlaying[ctx.guild.id].user.avatar_url)
+            embed.set_footer(text=f"Requested by: {self.currPlaying[ctx.guild.id].user}", icon_url=self.currPlaying[ctx.guild.id].user.display_avatar.url)
         await ctx.send(embed=embed)
 
     @commands.command(aliases=["next"])
     async def queue(self, ctx):
         vc = ctx.voice_client
-        embed = discord.Embed()
-        embed.title = embed.Empty
-        embed.url = embed.Empty
+        embed = self.create_embed()
         songList = ["**Next songs:**"]
         if(len(self.soundTrack[ctx.guild.id]) > 0):
             for i in range(len(self.soundTrack[ctx.guild.id])):
@@ -297,7 +340,7 @@ class Music(commands.Cog):
             embed.color = self.embedColors.get(self.currPlaying[ctx.guild.id].user.id, int("0xFF0000", 0))
             if self.currPlaying[ctx.guild.id].title != None:
                 embed.add_field(name="Currently playing:", value=f"**[{self.currPlaying[ctx.guild.id].title}](https://www.youtube.com/watch?v={self.currPlaying[ctx.guild.id].url} '{self.currPlaying[ctx.guild.id].url}')**")
-                embed.set_footer(text=f"Requested by: {self.currPlaying[ctx.guild.id].user}", icon_url=self.currPlaying[ctx.guild.id].user.avatar_url)
+                embed.set_footer(text=f"Requested by: {self.currPlaying[ctx.guild.id].user}", icon_url=self.currPlaying[ctx.guild.id].user.display_avatar.url)
 
         await ctx.send(embed=embed)
 
@@ -308,6 +351,14 @@ class Music(commands.Cog):
     @commands.command()
     async def disconnect(self, ctx):
         await self.disconnect_safe(ctx.voice_client)
+    
+    @commands.is_owner()
+    @commands.command()
+    async def rembed(self, ctx):
+        await self.read_embed_colors()
+        embed = self.create_embed(ctx.author.id)
+        embed.description = f"Reloaded embed color list with {len(self.embedColors)} colors"
+        await ctx.send(embed=embed)
 
     @play.before_invoke
     async def ensure_voice(self, ctx):
@@ -349,20 +400,33 @@ class Music(commands.Cog):
             if(len(data["items"]) == 0):
                 return None
             video = data["items"][0]
-            return Video(user, video["id"], video["snippet"]["title"], video["snippet"]["description"])
+            return Video(user, video["id"], video["snippet"]["title"], video["snippet"]["description"], video["contentDetails"]["duration"])
     
     def create_embed(self, id=0):
         embed = discord.Embed()
         embed.color = self.embedColors.get(id, int("0xFF0000", 0))
-        embed.title = embed.Empty
-        embed.url = embed.Empty
+        embed.title = None
+        embed.url = None
         return embed
     
-    async def read_playlist(self):
-        if not os.path.isfile(f"{os.getcwd()}/settings/music.json"):
+    async def read_embed_colors(self):
+        if not os.path.isfile(self.embedFile):
             return
         try:
-            with open(f"{os.getcwd()}/settings/music.json", "r") as file:
+            with open(self.embedFile, "r") as file:
+                embedColors = json.load(file)
+            for key in embedColors.keys():
+                self.embedColors[int(key)] = int(embedColors[key], 0)
+            self.logger.info(f"Loaded {len(self.embedColors)} embed colors for users")
+        except json.decoder.JSONDecodeError:
+            pass
+    
+    async def read_playlist(self):
+        if not os.path.isfile(self.playlistFile):
+            return
+        try:
+            songcount = 0
+            with open(self.playlistFile, "r") as file:
                 songs = json.load(file)
             for key in songs.keys():
                 self.soundTrack[int(key)] = []
@@ -370,7 +434,7 @@ class Music(commands.Cog):
                     user = self.bot.get_user(song[0])
                     video = await self.parse_video(user, song[1])
                     self.soundTrack[int(key)].append(video)
-            self.logger.info(f"Loaded songs from {len(self.soundTrack.keys())} guilds")
+                self.logger.info(f"Loaded {len(self.soundTrack[int(key)])} songs for guild {self.bot.get_guild(int(key))}")
         except json.decoder.JSONDecodeError:
             pass
 
@@ -381,8 +445,8 @@ class Music(commands.Cog):
             for song in self.soundTrack[key]:
                 songs[key].append((song.user.id, song.url))
         json_object = json.dumps(songs, indent=4)
-        with open(f"{os.getcwd()}/settings/music.json", "w") as file:
+        with open(self.playlistFile, "w") as file:
             file.write(json_object)
 
-def setup(bot):
-    bot.add_cog(Music(bot))
+async def setup(bot):
+    await bot.add_cog(Music(bot))

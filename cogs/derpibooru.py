@@ -81,5 +81,5 @@ class Derpibooru(commands.Cog):
 
         await ctx.send(embed=output)
     
-def setup(bot):
-    bot.add_cog(Derpibooru(bot))
+async def setup(bot):
+    await bot.add_cog(Derpibooru(bot))
