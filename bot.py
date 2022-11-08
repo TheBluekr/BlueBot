@@ -44,6 +44,10 @@ class Bot(commands.Bot):
                 except Exception as e:
                     print(f"{cog} is failed to load:")
                     raise e
+    
+    @commands.command()
+    async def restart(self, ctx: commands.Context):
+        await self.close()
 
 bot = Bot()
 bot.run(os.getenv("TOKEN"), log_handler=None)

@@ -48,7 +48,7 @@ class PingHistory(commands.Cog):
         embed = self.create_embed(member.id)
         pings = self.userHistory[member.id][ctx.message.guild.id]
         for ping in pings:
-            embed.add_field(name=f"{self.bot.get_user(ping.author)}", value=f"[Jump to message]({ping.url})\n{ping.content}", inline=True)
+            embed.add_field(name=f"{self.bot.get_user(ping.author)}", value=f"[Jump to message]({ping.url})", inline=True)
         await ctx.send(embed=embed)
 
     @commands.Cog.listener()

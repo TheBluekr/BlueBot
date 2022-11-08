@@ -143,10 +143,26 @@ class Lavalink(commands.Cog):
             await player.disconnect()
 
     @commands.command()
-    async def play(self, ctx: commands.Context, *, search: typing.Union[wavelink.YouTubeTrack, wavelink.YouTubeMusicTrack, wavelink.SoundCloudTrack]=None):
-        """Play a song with the given search query.
+    async def add(self, ctx: commands.Context, search: typing.Union[wavelink.YouTubeTrack, wavelink.YouTubeMusicTrack, wavelink.SoundCloudTrack, wavelink.YouTubePlaylist]):
+        if(type(search) != wavelink.YouTubePlaylist):
+            track = Track(search.id, search.info, requester=ctx.author, sponsorblock=False if type(search) == wavelink.SoundCloudTrack else True, loop=False)
+            self.wavequeue[ctx.guild].put(track)
+            embed = discord.Embed(description=f"**Added**:\n**[{track.title}](https://www.youtube.com/watch?v={track.identifier} '{track.identifier}')**")
+            embed.set_footer(text=f"Requested by: {ctx.author}", icon_url=ctx.author.avatar.url)
+            embed.color = self.embedColors.get(ctx.author.id, ctx.author.color)
+            await ctx.channel.send(embed=embed)
+        elif(type(search) == wavelink.YouTubePlaylist):
+            for yttrack in search.tracks:
+                track = Track(yttrack.id, yttrack.info, requester=ctx.author, sponsorblock=True, loop=False)
+                self.wavequeue[ctx.guild].put(track)
+            embed = discord.Embed(description=f"**Added playlist**:\n**{search.name} ({len(search.tracks)} songs)**")
+            embed.set_footer(text=f"Requested by: {ctx.author}", icon_url=ctx.author.avatar.url)
+            embed.color = self.embedColors.get(ctx.author.id, ctx.author.color)
+            await ctx.channel.send(embed=embed)
 
-        If not connected, connect to our voice channel.
+    @commands.command()
+    async def play(self, ctx: commands.Context, search: typing.Union[wavelink.YouTubeTrack, wavelink.YouTubeMusicTrack, wavelink.SoundCloudTrack]=None):
+        """Play a song with the given search query. (Also accepts a song after invoke to add to the queue)
         """
         if(not ctx.voice_client):
             vc: wavelink.Player = await ctx.author.voice.channel.connect(cls=wavelink.Player)
