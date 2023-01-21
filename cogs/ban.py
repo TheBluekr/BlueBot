@@ -9,7 +9,7 @@ __author__ = "TheBluekr#2702"
 __cogname__ = "bluebot.cogs.ban"
 logger = logging.getLogger(__cogname__)
 
-def canBan():
+def can_ban():
     async def predicate(ctx):
         permissions = ctx.channel.permissions_for(ctx.author)
         return permissions.ban_members
@@ -27,7 +27,7 @@ class Ban(commands.Cog):
         self.logger.info(f"Loaded cog {__cogname__}")
     
     @commands.hybrid_command()
-    @canBan()
+    @can_ban()
     async def banuser(self, ctx, *, flags: BanFlags):
         """Bans a user from the guild"""
         await ctx.guild.ban(flags.user, reason=f"Banned by: {ctx.author}. Reason: {flags.reason}", delete_message_days=flags.days)

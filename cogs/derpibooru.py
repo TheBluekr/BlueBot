@@ -27,7 +27,7 @@ class Derpibooru(commands.Cog):
     @commands.command(aliases=["derpi", "derpibooru"])
     @commands.guild_only()
     async def pony(self, ctx, *text):
-        if(ctx.message.channel.id != 551482347581603861 and ctx.message.channel.id != 608013362365857898):
+        if(ctx.message.channel.id != 957048975809183774 and ctx.message.channel.id != 1032960398422450198):
             return
         """ Returns image from derpibooru based off given command """
         embedLink = ""

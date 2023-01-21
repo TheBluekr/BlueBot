@@ -1,5 +1,6 @@
 import logging
 import sys
+import os
 
 from sqlalchemy import create_engine, exc
 from sqlalchemy.orm import sessionmaker
@@ -16,7 +17,7 @@ class Database:
         self.logger = logger
 
         try:
-            self.engine = create_engine("postgresql+psycopg2://bluebot@localhost:5432/bluebot", echo=True)
+            self.engine = create_engine(f"postgresql+psycopg2://{os.getenv('DB_USER')}:{os.getenv('DB_PASSWORD')}@database:5432/{os.getenv('DB_NAME')}")
             Base.metadata.create_all(self.engine)
             self.Session = sessionmaker(bind=self.engine)
             self.logger.info(f"Opened database session")
