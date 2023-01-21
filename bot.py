@@ -2,7 +2,7 @@ import discord
 from discord.ext import commands
 import os
 import logging
-import asyncio
+from core import Database
 
 ch = logging.StreamHandler()
 ch.setLevel(logging.INFO)
@@ -31,12 +31,25 @@ class Bot(commands.Bot):
         self.logger.setLevel(logging.INFO)
         self.logger.info(f"Loaded {__cogname__}")
 
+        self.db = Database()
+
         os.makedirs(f"{os.getcwd()}/settings", exist_ok=True)
     
     @commands.Cog.listener()
-    async def on_ready(self):
-        self.logger.info(f"Logged in as {self.user.name}")
-        for cog in os.listdir(r"cogs"): # Loop through each file in your "cogs" directory.
+    async def setup_hook(self):
+        await self.load_extension("cogs.personalroles")
+        #for cog in os.listdir(r"core"):
+            #if cog.endswith(".py"):
+                #try:
+                    #cog = f"core.{cog.replace('.py', '')}"
+                    #await self.load_extension(cog)
+                #except Exception as e:
+                    #print(f"{cog} is failed to load:")
+                    #raise e
+    
+    @commands.Cog.listener()
+    async def wait_until_ready(self):
+        for cog in os.listdir(r"cogs"):
             if cog.endswith(".py"):
                 try:
                     cog = f"cogs.{cog.replace('.py', '')}"
@@ -44,6 +57,10 @@ class Bot(commands.Bot):
                 except Exception as e:
                     print(f"{cog} is failed to load:")
                     raise e
+    
+    @commands.Cog.listener()
+    async def on_ready(self):
+        self.logger.info(f"Logged in as {self.user.name}")
     
     @commands.command()
     async def restart(self, ctx: commands.Context):

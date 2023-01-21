@@ -2,6 +2,7 @@ import logging
 import discord
 import typing
 
+from discord import app_commands
 from discord.ext import commands
 
 __author__ = "TheBluekr#2702"
@@ -86,6 +87,25 @@ class Buttons(commands.Cog):
     @button.command()
     async def clear(self, ctx, message: discord.Message):
         await message.edit(view=None)
+
+    @commands.is_owner()
+    @commands.guild_only()
+    @commands.command()
+    async def sync(self, ctx):
+        await self.bot.tree.sync(guild=ctx.guild)
+        await ctx.send("Synced commands for guild")
+    
+    @commands.is_owner()
+    @commands.command()
+    async def globalsync(self, ctx):
+        await self.bot.tree.sync()
+        await ctx.send("Synced commands globally")
+    
+    @commands.hybrid_command(description="Returns latency of bot")
+    async def ping(self, ctx):
+        ping1 = f"{str(round(self.bot.latency * 1000))} ms"
+        embed = discord.Embed(title= "**Pong!**", description=f"**{ping1}**", color=0xafdafc)
+        await ctx.send(embed=embed)
     
 async def setup(bot):
     await bot.add_cog(Buttons(bot))

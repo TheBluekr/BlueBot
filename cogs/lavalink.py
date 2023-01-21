@@ -4,6 +4,7 @@ import os
 import json
 
 from discord.ext import commands
+from discord import app_commands
 import typing
 
 import logging
@@ -142,26 +143,45 @@ class Lavalink(commands.Cog):
         else:
             await player.disconnect()
 
-    @commands.command()
-    async def add(self, ctx: commands.Context, search: typing.Union[wavelink.YouTubeTrack, wavelink.YouTubeMusicTrack, wavelink.SoundCloudTrack, wavelink.YouTubePlaylist]):
-        if(type(search) != wavelink.YouTubePlaylist):
-            track = Track(search.id, search.info, requester=ctx.author, sponsorblock=False if type(search) == wavelink.SoundCloudTrack else True, loop=False)
+    @commands.guild_only()
+    @app_commands.describe(search="Url of youtube video")
+    @commands.hybrid_command(description="Adds a track to play into the queue")
+    async def add(self, ctx: commands.Context, url: str):
+        #search: typing.Union[wavelink.YouTubeTrack, wavelink.YouTubeMusicTrack, wavelink.SoundCloudTrack, wavelink.YouTubePlaylist]
+        search = await wavelink.NodePool.get_node().get_tracks(wavelink.YouTubeTrack, url)
+        if(not search):
+            embed = discord.Embed(description=f"Could not find track")
+            embed.color = self.embedColors.get(ctx.author.id, ctx.author.color)
+            await ctx.channel.send(embed=embed)
+        else:
+            track = Track(search[0].id, search[0].info, requester=ctx.author, sponsorblock=False if type(search) == wavelink.SoundCloudTrack else True, loop=False)
             self.wavequeue[ctx.guild].put(track)
             embed = discord.Embed(description=f"**Added**:\n**[{track.title}](https://www.youtube.com/watch?v={track.identifier} '{track.identifier}')**")
             embed.set_footer(text=f"Requested by: {ctx.author}", icon_url=ctx.author.avatar.url)
             embed.color = self.embedColors.get(ctx.author.id, ctx.author.color)
             await ctx.channel.send(embed=embed)
-        elif(type(search) == wavelink.YouTubePlaylist):
-            for yttrack in search.tracks:
-                track = Track(yttrack.id, yttrack.info, requester=ctx.author, sponsorblock=True, loop=False)
-                self.wavequeue[ctx.guild].put(track)
-            embed = discord.Embed(description=f"**Added playlist**:\n**{search.name} ({len(search.tracks)} songs)**")
-            embed.set_footer(text=f"Requested by: {ctx.author}", icon_url=ctx.author.avatar.url)
-            embed.color = self.embedColors.get(ctx.author.id, ctx.author.color)
-            await ctx.channel.send(embed=embed)
+        
+        #if(type(search) != wavelink.YouTubePlaylist):
+            #track = Track(search.id, search.info, requester=ctx.author, sponsorblock=False if type(search) == wavelink.SoundCloudTrack else True, loop=False)
+            #self.wavequeue[ctx.guild].put(track)
+            #embed = discord.Embed(description=f"**Added**:\n**[{track.title}](https://www.youtube.com/watch?v={track.identifier} '{track.identifier}')**")
+            #embed.set_footer(text=f"Requested by: {ctx.author}", icon_url=ctx.author.avatar.url)
+            #embed.color = self.embedColors.get(ctx.author.id, ctx.author.color)
+            #await ctx.channel.send(embed=embed)
+        #elif(type(search) == wavelink.YouTubePlaylist):
+            #for yttrack in search.tracks:
+                #track = Track(yttrack.id, yttrack.info, requester=ctx.author, sponsorblock=True, loop=False)
+                #self.wavequeue[ctx.guild].put(track)
+            #embed = discord.Embed(description=f"**Added playlist**:\n**{search.name} ({len(search.tracks)} songs)**")
+            #embed.set_footer(text=f"Requested by: {ctx.author}", icon_url=ctx.author.avatar.url)
+            #embed.color = self.embedColors.get(ctx.author.id, ctx.author.color)
+            #await ctx.channel.send(embed=embed)
 
+    @commands.guild_only()
+    #@app_commands.describe(search="Optional: Url of youtube video/playlist")
+    #@commands.hybrid_command(description="Starts playing the current soundtrack")
     @commands.command()
-    async def play(self, ctx: commands.Context, search: typing.Union[wavelink.YouTubeTrack, wavelink.YouTubeMusicTrack, wavelink.SoundCloudTrack]=None):
+    async def play(self, ctx: commands.Context, search: typing.Union[wavelink.YouTubeTrack, wavelink.YouTubeMusicTrack, wavelink.SoundCloudTrack]):
         """Play a song with the given search query. (Also accepts a song after invoke to add to the queue)
         """
         if(not ctx.voice_client):
@@ -190,7 +210,8 @@ class Lavalink(commands.Cog):
                 self.wavequeue[ctx.guild].put_at_front(track)
                 vc.play(next)
     
-    @commands.command()
+    @commands.guild_only()
+    @commands.hybrid_command(description="Pause the current player")
     async def pause(self, ctx: commands.Context):
         """Pauses the music player.
         """
@@ -205,7 +226,8 @@ class Lavalink(commands.Cog):
             await ctx.channel.send(embed=embed)
             await vc.pause()
     
-    @commands.command()
+    @commands.guild_only()
+    @commands.hybrid_command(description="Resumes the current player")
     async def resume(self, ctx: commands.Context):
         """Unpauses the music player.
         """
@@ -220,7 +242,8 @@ class Lavalink(commands.Cog):
             await ctx.channel.send(embed=embed)
             await vc.resume()
     
-    @commands.command()
+    @commands.guild_only()
+    @commands.hybrid_command(description="Stops the current player and disconnects from voice")
     async def stop(self, ctx: commands.Context):
         """Stops playing music and disconnects the bot from the voice channel."""
         if(not ctx.voice_client):
@@ -236,7 +259,8 @@ class Lavalink(commands.Cog):
             await vc.stop()
             await vc.disconnect()
 
-    @commands.command()
+    @commands.guild_only()
+    @commands.hybrid_command(description="Skips the current song")
     async def skip(self, ctx: commands.Context):
         """Skips the current playing song.
         """
@@ -250,7 +274,9 @@ class Lavalink(commands.Cog):
         self.wavequeue[vc.guild].put_at_front(curr)
         await vc.stop()
     
-    @commands.command()
+    @commands.guild_only()
+    @app_commands.describe(volume="Volume level (Default: 1.0)")
+    @commands.hybrid_command(description="Changes the volume of the player")
     async def volume(self, ctx: commands.Context, volume: float=1.0):
         """Set the volume for this guild. (Default 1.0)"""
         if(not ctx.voice_client):
@@ -261,8 +287,10 @@ class Lavalink(commands.Cog):
         vc.track.loop = False
         await vc.set_volume(volume)
     
-    @commands.command()
-    async def seek(self, ctx: commands.Context, position: float):
+    @commands.guild_only()
+    @app_commands.describe(position="Time to set to (in seconds)")
+    @commands.hybrid_command(description="Sets the current position in the track to the specified time")
+    async def set(self, ctx: commands.Context, position: float):
         """Sets the current playback to the specified time (in seconds)"""
         if(not ctx.voice_client):
             return
@@ -271,10 +299,16 @@ class Lavalink(commands.Cog):
             return
         await vc.seek(position*1000)
     
+    @add.before_invoke
+    async def ensure_add(self, ctx: commands.Context):
+        if(self.wavequeue.get(ctx.guild, None) == None):
+            self.wavequeue[ctx.guild] = wavelink.Queue()
+
     @play.before_invoke
     async def ensure_queue(self, ctx: commands.Context):
-        self.wavequeue[ctx.guild] = wavelink.Queue()
-        self.volume[ctx.guild] = 1.0
+        if(self.wavequeue.get(ctx.guild, None) == None):
+            self.wavequeue[ctx.guild] = wavelink.Queue()
+            self.volume[ctx.guild] = 1.0
     
     def process_sponsorblock(self, sponsorblock_segments: list):
         blocks = []

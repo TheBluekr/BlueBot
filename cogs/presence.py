@@ -12,7 +12,9 @@ class Presence(commands.Cog):
         self.bot = bot
         self.logger = logger
         self.logger.info(f"Loaded cog {__cogname__}")
-        
+    
+    @commands.Cog.listener()
+    async def on_ready(self):
         self.async_init.start()
     
     @tasks.loop(count=1)
