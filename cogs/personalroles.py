@@ -5,6 +5,7 @@ import json
 import requests
 from io import BytesIO
 import imghdr
+from typing import Union
 
 from discord.ext import commands
 
@@ -32,19 +33,9 @@ class PersonalRoles(commands.Cog):
         self.logger.info(f"Loaded cog {__cogname__}")
 
         self.db = self.bot.db
+        self.embed = self.bot.embed
 
         RoleModel.metadata.create_all(self.db.engine, RoleModel.metadata.tables.values(), checkfirst=True)
-
-        self.cache = {}
-        try:
-            with open("./settings/personalroles.json", "r") as fp:
-                self.cache = json.load(fp)
-        except:
-            pass
-    
-    async def write(self):
-        with open("./settings/personalroles.json", "w") as fp:
-            json.dump(self.cache, fp, sort_keys=True, indent=4)
     
     def is_guild_owner():
         async def predicate(ctx):
@@ -62,27 +53,6 @@ class PersonalRoles(commands.Cog):
     
     @is_guild_owner()
     @pr.command()
-    async def convert(self, ctx):
-        try:
-            session = self.db.Session()
-            for key, value in self.cache.items():
-                member = ctx.guild.get_member(int(key))
-                role = ctx.guild.get_role(int(value))
-                if(self._role_exists(session, member.id, ctx.guild.id)):
-                    continue
-                else:
-                    new_role = RoleModel(role_id=role.id, user_id=member.id, guild_id=ctx.guild.id)
-                    session.add(new_role)
-                    session.commit()
-                    session = self.db.Session()
-        except Exception as e:
-            self.logger.error(f"Error occured in pr.add: {e}")
-            session.rollback()
-        finally:
-            session.close()
-
-    @is_guild_owner()
-    @pr.command()
     async def add(self, ctx, member: discord.Member, role: discord.Role):
         try:
             session = self.db.Session()
@@ -92,7 +62,9 @@ class PersonalRoles(commands.Cog):
                 new_role = RoleModel(role_id=role.id, user_id=member.id, guild_id=ctx.guild.id)
                 session.add(new_role)
                 session.commit()
-                await ctx.send(f"Succesfully added {member} with role {role}")
+                embed = self.embed.create_embed(ctx.author)
+                embed.description = f"Succesfully added {member} with role {role}"
+                await ctx.send(embed=embed)
         except Exception as e:
             self.logger.error(f"Error occured in pr.add: {e}")
             session.rollback()
@@ -106,10 +78,23 @@ class PersonalRoles(commands.Cog):
     
     @is_guild_owner()
     @pr.command()
-    async def remove(self, ctx, member: discord.Member, role: discord.Role):
-        self.cache.pop(member.id, None)
-        await self.write()
-        await ctx.send(f"Succesfully removed {member} with role {role}")
+    async def remove(self, ctx, member: Union[discord.Member, discord.User], role: discord.Role):
+        try:
+            session = self.db.Session()
+            if(not self._role_exists(session, member.id, ctx.guild.id)):
+                await ctx.send(f"{member} doesn't have an assigned role {role}")
+            else:
+                row = session.query(RoleModel).filter(RoleModel.guild_id == ctx.guild.id, RoleModel.user_id == member.id, RoleModel.role_id == role.id).scalar()
+                row.delete(synchronize_session=False)
+                session.commit()
+                embed = self.embed.create_embed(ctx.author)
+                embed.description = f"Succesfully removed {member} with role {role}"
+                await ctx.send(embed=embed)
+        except Exception as e:
+            self.logger.error(f"Error occured in pr.remove: {e}")
+            session.rollback()
+        finally:
+            session.close()
     
     @is_guild_owner()
     @pr.command()
@@ -117,10 +102,12 @@ class PersonalRoles(commands.Cog):
         try:
             session = self.db.Session()
             rows = session.query(RoleModel).filter(RoleModel.guild_id == ctx.guild.id).all()
-            message = "```"
+            embed = self.embed.create_embed(ctx.author)
+            embed.description = "List of personal roles:\n```"
             for value in rows:
-                message += f"{ctx.guild.get_member(value.user_id)} - {ctx.guild.get_role(value.role_id)}\n"
-            await ctx.send(f"{message}```")
+                embed.description += f"{ctx.guild.get_member(value.user_id)} - {ctx.guild.get_role(value.role_id)}\n"
+            embed.description += "```"
+            await ctx.send(embed=embed)
         except Exception as e:
             self.logger.error(f"Error occured in pr.list: {e}")
         finally:
@@ -132,9 +119,13 @@ class PersonalRoles(commands.Cog):
             session = self.db.Session()
             row = session.query(RoleModel).filter(RoleModel.guild_id == ctx.guild.id, RoleModel.user_id == ctx.author.id).one()
             role = ctx.author.get_role(row.role_id)
+            embed = self.embed.create_embed(ctx.author)
             if(role == None):
-                return await ctx.send("No personal role found")
+                embed.description = "No personal role found"
+                return await ctx.send(embed=embed)
             await role.edit(name=name)
+            embed.description = f"Set {role} title to: {name}"
+            await ctx.send(embed=embed)
         except Exception as e:
             self.logger.error(f"Error occured in pr.name: {e}")
         finally:
@@ -146,9 +137,13 @@ class PersonalRoles(commands.Cog):
             session = self.db.Session()
             row = session.query(RoleModel).filter(RoleModel.guild_id == ctx.guild.id, RoleModel.user_id == ctx.author.id).one()
             role = ctx.author.get_role(row.role_id)
+            embed = self.embed.create_embed(ctx.author)
             if(role == None):
-                return await ctx.send("No personal role found")
+                embed.description = "No personal role found"
+                return await ctx.send(embed=embed)
             await role.edit(color=color)
+            embed.description = f"Set {role} color to: #{color.value:0>6X}"
+            await ctx.send(embed=embed)
         except Exception as e:
             self.logger.error(f"Error occured in pr.name: {e}")
         finally:
@@ -165,24 +160,30 @@ class PersonalRoles(commands.Cog):
             session = self.db.Session()
             row = session.query(RoleModel).filter(RoleModel.guild_id == ctx.guild.id, RoleModel.user_id == ctx.author.id).one()
             role = ctx.author.get_role(row.role_id)
+            embed = self.embed.create_embed(ctx.author)
             if(role == None):
-                return await ctx.send("No personal role found")
+                embed.description = "No personal role found"
+                return await ctx.send(embed=embed)
             if(len(ctx.message.attachments) == 0 and url == None):
                 return await role.edit(display_icon=None)
-            bytes = None
+            image_bytes = None
             if(url != None):
                 response = requests.get(url)
                 if(response.status_code != 200):
-                    return await ctx.send(f"URL return error code {response.status_code}")
-                bytes = BytesIO(response.content)
-                if(imghdr.what(bytes) == None):
-                    return await ctx.send(f"Invalid image format provided in URL")
+                    embed.description = f"URL return error code {response.status_code}"
+                    return await ctx.send(embed=embed)
+                image_bytes = BytesIO(response.content)
+                if(imghdr.what(image_bytes) == None):
+                    embed.description = f"Invalid image format provided in URL"
+                    return await ctx.send(embed=embed)
             else:             
                 attachment = ctx.message.attachments[0]
-                bytes = BytesIO(await attachment.read())
-            if(bytes.getbuffer().nbytes > 1024*256): # 262144
-                return await ctx.send("Attachment is over the 256kb file size limit")
-            await role.edit(display_icon=bytes.read())
+                image_bytes = BytesIO(await attachment.read())
+            if(image_bytes.getbuffer().nbytes > 1024*256): # 262144
+                embed.description = "Attachment is over the 256kb file size limit"
+                return await ctx.send(embed=embed)
+            await role.edit(display_icon=image_bytes.read())
+            embed.description = f"Set {role} icon"
         except Exception as e:
             self.logger.error(f"Error occured in pr.name: {e}")
         finally:
@@ -190,7 +191,7 @@ class PersonalRoles(commands.Cog):
     
     def _role_exists(self, session, member_id, guild_id):
         try:
-            if not session.query(sqlalchemy.exists().where(RoleModel.user_id == member_id, RoleModel.guild_id == guild_id)).scalar():
+            if not session.query(sqlalchemy.exists(RoleModel).where(RoleModel.user_id == member_id, RoleModel.guild_id == guild_id)).scalar():
                 return False
             else:
                 return True

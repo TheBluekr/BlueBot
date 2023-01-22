@@ -33,7 +33,7 @@ class Bot(commands.Bot):
 
         self.db = Database()
 
-        self.embed_colors = EmbedColor(self.db)
+        self.embed = EmbedColor(self)
 
         os.makedirs(f"{os.getcwd()}/settings", exist_ok=True)
     

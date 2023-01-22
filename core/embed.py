@@ -22,10 +22,11 @@ class ColorModel(Base):
     color = Column(Integer)
 
 class EmbedColor:
-    def __init__(self, db):
+    def __init__(self, bot):
         self.logger = logger
 
-        self.db = db
+        self.bot = bot
+        self.db = bot.db
 
         ColorModel.metadata.create_all(self.db.engine, ColorModel.metadata.tables.values(), checkfirst=True)
 
@@ -49,20 +50,21 @@ class EmbedColor:
         except json.decoder.JSONDecodeError:
             pass
     
-    async def get_color(self, user: Union[discord.Member, discord.User]):
+    def get_color(self, user: Union[discord.Member, discord.User]):
         color = self.embedColors.get(user.id, None)
         if(color == None):
             try:
                 session = self.db.Session()
                 row = session.query(ColorModel).filter(ColorModel.user_id == user.id).first()
-                color = row.color
+                if(row != None):
+                    color = row.color
             except Exception as e:
                 self.logger.error(f"Error occured getting embed color from database: {e}")
             finally:
                 session.close()
         return discord.Colour(color) if color != None else discord.Colour(0)
     
-    async def set_color(self, user: Union[discord.Member, discord.User], color: discord.Colour):
+    def set_color(self, user: Union[discord.Member, discord.User], color: discord.Colour):
         self.embedColors[user.id] = color.value
         try:
             session = self.db.Session()
@@ -77,3 +79,8 @@ class EmbedColor:
             self.logger.error(f"Error occured in setting color to database: {e}")
         finally:
             session.close()
+    
+    def create_embed(self, user: Union[discord.Member, discord.User]):
+        embed = discord.Embed(color=self.get_color(user))
+        embed.set_author(name=user, icon_url=user.avatar.url)
+        return embed
