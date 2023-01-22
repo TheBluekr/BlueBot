@@ -16,7 +16,7 @@ class EmbedColorCommands(commands.Cog):
         self.db = self.bot.db
         self.embed = self.bot.embed
     
-    @commands.group(aliases=["embedcolour"])
+    @commands.group(aliases=["embedcolour", "embed"], invoke_without_command=True)
     async def embedcolor(self, ctx):
         embed = self.embed.create_embed(ctx.author)
         color = self.embed.get_color(ctx.author)
