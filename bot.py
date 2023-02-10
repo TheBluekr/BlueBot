@@ -37,14 +37,7 @@ class Bot(commands.Bot):
 
         os.makedirs(f"{os.getcwd()}/settings", exist_ok=True)
     
-    @commands.Cog.listener()
     async def setup_hook(self):
-        pass
-        
-    @commands.Cog.listener()
-    async def on_ready(self):
-        self.logger.info(f"Logged in as {self.user.name}")
-
         for cog in os.listdir(r"cogs"):
             if cog.endswith(".py"):
                 try:
@@ -53,6 +46,17 @@ class Bot(commands.Bot):
                 except Exception as e:
                     print(f"{cog} is failed to load:")
                     raise e
+        
+        self.logger.info("Finished loading all cogs")
+        return await super().setup_hook()
+
+    @commands.Cog.listener()
+    async def on_ready(self):
+        self.logger.info(f"Logged in as {self.user.name}")
+    
+    @commands.Cog.listener()
+    async def on_disconnect(self):
+        self.db.close()
     
     @commands.command()
     async def restart(self, ctx: commands.Context):

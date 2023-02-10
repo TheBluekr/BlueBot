@@ -30,3 +30,5 @@ class Database:
         except Exception as e:
             self.logger.fatal(e)
             sys.exit(1)
+    def close(self):
+        self.engine.dispose()
