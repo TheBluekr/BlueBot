@@ -23,10 +23,14 @@ class LobbyView(discord.ui.View):
     def __init__(self, lobby):
         super().__init__()
         self.lobby = lobby
-        button = discord.ui.Button(label="Select", style=discord.ButtonStyle.blurple)
+        player = self.lobby.bismarck.players[self.lobby.bismarck.dealer]
+        button = discord.ui.Button(label=f"{discord.utils.get(self.bot.get_all_members(), id=player.id)}'s turn", style=discord.ButtonStyle.blurple)
         button.callback = self.addDiscard
         self.add_item(button)
         self.discardView = None
+    
+    async def updateTurn(self, interaction: discord.Interaction):
+        pass
     
     async def addDiscard(self, interaction: discord.Interaction):
         player = self.lobby.bismarck.getPlayer(interaction.user)
@@ -81,6 +85,7 @@ class Lobby:
 
     async def start_game(self):
         self.bismarck.newRound()
+
         await self.channel.send(view=self.view)
 
     async def play(self):
