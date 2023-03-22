@@ -50,8 +50,8 @@ class CogManagement(commands.Cog):
                 timestamp=ctx.message.created_at
             )
             try:
-                self.bot.unload_extension(f'cogs.{cogname}')
-                self.bot.load_extension(f'cogs.{cogname}')
+                await self.bot.unload_extension(f'cogs.{cogname}')
+                await self.bot.load_extension(f'cogs.{cogname}')
                 embed.add_field(
                     name=f'Reloaded `{cogname}.py`',
                     value='\uFEFF'
