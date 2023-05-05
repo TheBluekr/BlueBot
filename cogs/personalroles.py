@@ -8,6 +8,7 @@ import imghdr
 from typing import Union
 
 from discord.ext import commands
+from discord import app_commands
 
 import sqlalchemy
 from sqlalchemy import Column, String, BigInteger
@@ -26,7 +27,8 @@ class RoleModel(Base):
     user_id = Column(BigInteger)
     guild_id = Column(BigInteger)
 
-class PersonalRoles(commands.Cog):
+@app_commands.guild_only
+class PersonalRoles(commands.GroupCog, group_name="personalrole"):
     def __init__(self, bot):
         self.bot = bot
         self.logger = logger
@@ -41,7 +43,16 @@ class PersonalRoles(commands.Cog):
         async def predicate(ctx):
             return ctx.author == ctx.guild.owner
         return commands.check(predicate)
-    
+
+    @commands.command()
+    async def listroles(self, ctx):
+        embed = self.embed.create_embed(ctx.author)
+        embed.description = "```"
+        for role in ctx.guild.roles:
+            embed.description += f"{role.name} - {role.position}\n"
+        embed.description += "```"
+        await ctx.send(embed=embed)
+
     @commands.group(pass_context=True)
     async def pr(self, ctx):
         pass
@@ -53,8 +64,39 @@ class PersonalRoles(commands.Cog):
     
     @is_guild_owner()
     @pr.command()
+    async def create(self, ctx, member: discord.Member, name: str):
+        try:
+            session = self.db.Session()
+            if(self._role_exists(session, member.id, ctx.guild.id)):
+                await ctx.send(f"{member} already has assigned role {role}")
+            else:
+                role = await ctx.guild.create_role(name=name)
+                await member.add_roles(role)
+                roles = self._get_guild_roles(session, ctx.guild.id)
+                lowest = ctx.guild.get_role(list(roles.values())[0])
+                for curr in list(roles.values()):
+                    temprole = ctx.guild.get_role(curr)
+                    if(temprole < lowest):
+                        lowest = temprole
+                await role.edit(position=lowest.position)
+
+                new_role = RoleModel(role_id=role.id, user_id=member.id, guild_id=ctx.guild.id)
+                session.add(new_role)
+                session.commit()
+                embed = self.embed.create_embed(ctx.author)
+                embed.description = f"Succesfully added {member} with role {role}"
+                await ctx.send(embed=embed)
+        except Exception as e:
+            self.logger.error(f"Error occured in pr.add: {e}")
+            session.rollback()
+        finally:
+            session.close()
+    
+    @is_guild_owner()
+    @pr.command()
     async def add(self, ctx, member: discord.Member, role: discord.Role):
         try:
+            await member.add_roles(role)
             session = self.db.Session()
             if(self._role_exists(session, member.id, ctx.guild.id)):
                 await ctx.send(f"{member} already has assigned role {role}")
@@ -101,11 +143,16 @@ class PersonalRoles(commands.Cog):
     async def list(self, ctx):
         try:
             session = self.db.Session()
-            rows = session.query(RoleModel).filter(RoleModel.guild_id == ctx.guild.id).all()
             embed = self.embed.create_embed(ctx.author)
             embed.description = "List of personal roles:\n```"
-            for value in rows:
-                embed.description += f"{ctx.guild.get_member(value.user_id)} - {ctx.guild.get_role(value.role_id)}\n"
+            roles = self._get_guild_roles(session, ctx.guild.id)
+            for user, role in roles.items():
+                member = ctx.guild.get_member(user)
+                if(member != None):
+                    embed.description += f"{member} - {ctx.guild.get_role(role)}\n"
+                else:
+                    member = await self.bot.fetch_user(user)
+                    embed.description += f"{member} - {ctx.guild.get_role(role)} - Not in guild\n"
             embed.description += "```"
             await ctx.send(embed=embed)
         except Exception as e:
@@ -198,6 +245,18 @@ class PersonalRoles(commands.Cog):
         except Exception as e:
             self.logger.error(f"Error occured in _role_exists: {e}")
             return False
+    
+    def _get_guild_roles(self, session, guild_id):
+        try:
+            rows = session.query(RoleModel).filter(RoleModel.guild_id == guild_id).all()
+            roles = {}
+            for row in rows:
+                roles[row.user_id] = row.role_id
+            return roles
+        except Exception as e:
+            self.logger.error(f"Error occured in _get_guild_roles: {e}")
+            return []
 
 async def setup(bot):
     await bot.add_cog(PersonalRoles(bot))
+    await bot.tree.sync()
