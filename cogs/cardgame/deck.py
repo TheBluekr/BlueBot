@@ -13,7 +13,7 @@ class Deck:
             for rank in range(minRank, maxRank):
                 self.deck.append(Card(rank, suit))
 
-    def __str__(self):
+    def __str__(self) -> str:
         deckStr = ''
         for card in self.deck:
             deckStr += card.__str__() + '\n'
@@ -22,13 +22,13 @@ class Deck:
     def shuffle(self):
         rand.shuffle(self.deck)
 
-    def deal(self):
+    def deal(self) -> Card:
         return self.deck.pop(0)
 
     def sort(self):
         self.deck.sort()
 
-    def size(self):
+    def size(self) -> int:
         return len(self.deck)
 
     def addCards(self, cards):

@@ -2,7 +2,7 @@ import discord
 from discord.ext import commands
 import os
 import logging
-from core import Database, EmbedColor
+from core import Database, EmbedColor, Git
 
 ch = logging.StreamHandler()
 ch.setLevel(logging.INFO)
@@ -34,6 +34,8 @@ class Bot(commands.Bot):
         self.db = Database()
 
         self.embed = EmbedColor(self)
+
+        self.git = Git(self)
 
         os.makedirs(f"{os.getcwd()}/settings", exist_ok=True)
     
