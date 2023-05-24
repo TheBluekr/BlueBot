@@ -28,44 +28,23 @@ class EmbedColor:
         self.bot = bot
         self.db = bot.db
 
-        ColorModel.metadata.create_all(self.db.engine, ColorModel.metadata.tables.values(), checkfirst=True)
-
+        ColorModel.metadata.create_all(self.db.engine)
         self.embedColors = {}
 
-        self.embed_colors()
-    
-    def embed_colors(self):
-        if not os.path.isfile(f"{os.getcwd()}/settings/music.embed.json"):
-            return
-        try:
-            with open(f"{os.getcwd()}/settings/music.embed.json", "r") as file:
-                embedColors = json.load(file)
-            for key in embedColors.keys():
-                self.embedColors[int(key)] = int(embedColors[key], 0)
-                session = self.db.Session()
-                rows = session.query(ColorModel).all()
-                for row in rows:
-                    self.embedColors[row.user_id] = row.color
-            self.logger.info(f"Loaded {len(self.embedColors)} embed colors for users")
-        except json.decoder.JSONDecodeError:
-            pass
-    
     def get_color(self, user: Union[discord.Member, discord.User]):
-        color = self.embedColors.get(user.id, None)
-        if(color == None):
-            try:
-                session = self.db.Session()
-                row = session.query(ColorModel).filter(ColorModel.user_id == user.id).first()
-                if(row != None):
-                    color = row.color
-            except Exception as e:
-                self.logger.error(f"Error occured getting embed color from database: {e}")
-            finally:
-                session.close()
+        color = None
+        try:
+            session = self.db.Session()
+            row = session.query(ColorModel).filter(ColorModel.user_id == user.id).first()
+            if(row != None):
+                color = row.color
+        except Exception as e:
+            self.logger.error(f"Error occured getting embed color from database: {e}")
+        finally:
+            session.close()
         return discord.Colour(color) if color != None else discord.Colour(0)
     
     def set_color(self, user: Union[discord.Member, discord.User], color: discord.Colour):
-        self.embedColors[user.id] = color.value
         try:
             session = self.db.Session()
             row = session.query(ColorModel).filter(ColorModel.user_id == user.id).first()
@@ -80,7 +59,9 @@ class EmbedColor:
         finally:
             session.close()
     
-    def create_embed(self, user: Union[discord.Member, discord.User]):
-        embed = discord.Embed(color=self.get_color(user))
-        embed.set_author(name=user, icon_url=user.avatar.url)
+    def create_embed(self, user: Union[discord.Member, discord.User, None]):
+        embed = discord.Embed()
+        if(user != None):
+            embed.color = self.get_color(user)
+            embed.set_author(name=user, icon_url=user.avatar.url)
         return embed

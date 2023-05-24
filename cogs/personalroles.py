@@ -1,14 +1,12 @@
 import logging
 import discord
 import typing
-import json
 import requests
 from io import BytesIO
 import imghdr
 from typing import Union
 
 from discord.ext import commands
-from discord import app_commands
 
 import sqlalchemy
 from sqlalchemy import Column, String, BigInteger
@@ -21,14 +19,13 @@ __cogname__ = "bluebot.cogs.personalroles"
 logger = logging.getLogger(__cogname__)
 
 class RoleModel(Base):
-    __tablename__ = "personal_role"
+    __tablename__ = "personalroles"
 
     role_id = Column(BigInteger, primary_key=True)
     user_id = Column(BigInteger)
     guild_id = Column(BigInteger)
 
-@app_commands.guild_only
-class PersonalRoles(commands.GroupCog, group_name="personalrole"):
+class PersonalRoles(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.logger = logger
@@ -43,15 +40,14 @@ class PersonalRoles(commands.GroupCog, group_name="personalrole"):
         async def predicate(ctx):
             return ctx.author == ctx.guild.owner
         return commands.check(predicate)
+    
+    @commands.Cog.listener()
+    async def on_member_join(self, member: discord.Member):
+        pass
 
-    @commands.command()
-    async def listroles(self, ctx):
-        embed = self.embed.create_embed(ctx.author)
-        embed.description = "```"
-        for role in ctx.guild.roles:
-            embed.description += f"{role.name} - {role.position}\n"
-        embed.description += "```"
-        await ctx.send(embed=embed)
+    @commands.Cog.listener()
+    async def on_member_remove(self, member: discord.Member):
+        pass
 
     @commands.group(pass_context=True)
     async def pr(self, ctx):
@@ -127,7 +123,7 @@ class PersonalRoles(commands.GroupCog, group_name="personalrole"):
                 await ctx.send(f"{member} doesn't have an assigned role {role}")
             else:
                 row = session.query(RoleModel).filter(RoleModel.guild_id == ctx.guild.id, RoleModel.user_id == member.id, RoleModel.role_id == role.id).scalar()
-                row.delete(synchronize_session=False)
+                session.delete(row)
                 session.commit()
                 embed = self.embed.create_embed(ctx.author)
                 embed.description = f"Succesfully removed {member} with role {role}"
@@ -145,14 +141,14 @@ class PersonalRoles(commands.GroupCog, group_name="personalrole"):
             session = self.db.Session()
             embed = self.embed.create_embed(ctx.author)
             embed.description = "List of personal roles:\n```"
-            roles = self._get_guild_roles(session, ctx.guild.id)
-            for user, role in roles.items():
-                member = ctx.guild.get_member(user)
+            rows = session.query(RoleModel).all()
+            for row in rows:
+                member = ctx.guild.get_member(row.user_id)
                 if(member != None):
-                    embed.description += f"{member} - {ctx.guild.get_role(role)}\n"
+                    embed.description += f"{member} - {ctx.guild.get_role(row.role_id)}\n"
                 else:
-                    member = await self.bot.fetch_user(user)
-                    embed.description += f"{member} - {ctx.guild.get_role(role)} - Not in guild\n"
+                    member = await self.bot.fetch_user(row.user_id)
+                    embed.description += f"{member} - {ctx.guild.get_role(row.role_id)} - Not in guild\n"
             embed.description += "```"
             await ctx.send(embed=embed)
         except Exception as e:
@@ -259,4 +255,3 @@ class PersonalRoles(commands.GroupCog, group_name="personalrole"):
 
 async def setup(bot):
     await bot.add_cog(PersonalRoles(bot))
-    await bot.tree.sync()

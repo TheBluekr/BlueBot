@@ -6,7 +6,6 @@ from typing import Union, Optional
 import tweepy
 import os
 import re
-import json
 
 import sqlalchemy
 from sqlalchemy import Column, BigInteger, Integer
@@ -19,7 +18,7 @@ __cogname__ = "bluebot.cogs.twitter"
 logger = logging.getLogger(__cogname__)
 
 class TwitterModel(Base):
-    __tablename__ = "twitter_poll"
+    __tablename__ = "twitter"
 
     id = Column(Integer, primary_key=True)
     channel_id = Column(BigInteger)
@@ -92,7 +91,7 @@ class Twitter(commands.Cog):
             session.rollback()
         finally:
             session.close()
-    
+
     @commands.command()
     @commands.has_permissions(manage_guild=True) 
     async def twitter(self, ctx: commands.Context, screen_name: str, member: Union[discord.Member, discord.User, None]) -> None:
@@ -180,7 +179,7 @@ class Twitter(commands.Cog):
             session.rollback()
         finally:
             session.close()
-    
+        
     def create_tweet_embed(self, member: Union[discord.Member, discord.User, None], twitter_user, tweet):
         text = re.sub(' https?:\/\/t.co\/[a-zA-Z0-9]{10}', '', tweet.full_text)
         text = text.replace("&lt;", "<")
