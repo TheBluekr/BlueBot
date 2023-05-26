@@ -33,8 +33,8 @@ class Bluecorp(commands.Cog):
 
 
     @commands.is_owner()
-    @commands.command()
-    async def eval_fn(self, ctx, *, cmd):
+    @commands.hybrid_command()
+    async def eval_fn(self, ctx: commands.Context, *, cmd):
         """Evaluates input.
         Input is interpreted as newline seperated statements.
         If the last statement is an expression, that is the return value.
@@ -78,13 +78,27 @@ class Bluecorp(commands.Cog):
         }
         exec(compile(parsed, filename="<ast>", mode="exec"), env)
 
-        result = (await eval(f"{fn_name}()", env))
+        try:
+            result = (await eval(f"{fn_name}()", env))
+        except Exception as e:
+            result = f"{type(e).__name__}: {e}"
         await ctx.send(f"```{result}```")
     
     @commands.is_owner()
-    @commands.command()
+    @commands.hybrid_command()
     async def purge(self, ctx, limit: int=100):
         await ctx.channel.purge(limit=limit)
+    
+    @app_commands.command()
+    @app_commands.guilds(138365437791567872)
+    async def send(self, interaction: discord.Interaction, message: str, replyto: str = None):
+        #await interaction.response.defer(ephemeral=False, thinking=False)
+        await interaction.response.send_message(f"Sending message:\n```{message}```", ephemeral=True)
+        try:
+            reply = await interaction.channel.fetch_message(int(replyto))
+            await interaction.channel.send(message, reference=reply)
+        except discord.NotFound:
+            await interaction.channel.send(message)
 
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
@@ -96,4 +110,4 @@ class Bluecorp(commands.Cog):
             await message.delete()
     
 async def setup(bot):
-    await bot.add_cog(Bluecorp(bot))
+    await bot.add_cog(Bluecorp(bot), guild=bot.get_guild(138365437791567872))
