@@ -30,7 +30,10 @@ class Git:
 
             self.logger.info("File update found on repo, updating files")
             embed = self.bot.embed.create_embed(self.bot.user)
-            embed.description = "Files updated from repository:```"
+            embed.description = "File update found on repo, updating files"
+            channel = await self.bot.fetch_channel(self.updateChannel)
+            if(channel != None):
+                await channel.send(embed=embed)
     
             origin.pull()
             for file in diff:
@@ -49,12 +52,6 @@ class Git:
                 if(bpath.startswith("cogs.")):
                     if(diff.change_type in ["A", "R", "M"]):
                         await self.bot.load_extension(bpath)
-            
-            embed.description += "```"
-
-            channel = await self.bot.fetch_channel(self.updateChannel)
-            if(channel != None):
-                await channel.send(embed=embed)
             
             if(bShutdown):
                 self.bot.close()
