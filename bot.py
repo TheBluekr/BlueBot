@@ -55,8 +55,8 @@ class Bot(commands.Bot):
     @commands.Cog.listener()
     async def on_ready(self):
         self.logger.info(f"Logged in as {self.user.name}")
-        fmt = await self.tree.sync()
-        self.logger.info(f"Synced {len(fmt)} commands")
+        #fmt = await self.tree.sync()
+        #self.logger.info(f"Synced {len(fmt)} commands")
     
     @commands.Cog.listener()
     async def on_disconnect(self):
