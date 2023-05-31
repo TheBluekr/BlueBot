@@ -48,6 +48,15 @@ class Git:
                 if(bpath.startswith("cogs.")):
                     if(diff.change_type in ["A", "R", "M"]):
                         await self.bot.load_extension(bpath)
+                
+                if(diff.change_type == "A"):
+                    embed.description += f"[Added] {bpath}"
+                elif(diff.change_type == "D"):
+                    embed.description += f"[Deleted] {apath}"
+                elif(diff.change_type == "R"):
+                    embed.description += f"[Renamed] {apath} -> {bpath}"
+                elif(diff.change_type == "M"):
+                    embed.description += f"[Modified] {apath}"
             
             embed.description += "```"
 
