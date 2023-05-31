@@ -33,12 +33,10 @@ class EmbedColorCommands(commands.Cog):
             colorcls = discord.Color.from_str(color)
             self.embed.set_color(interaction.user, colorcls)
             embed.color = colorcls
-            embed.description = embed.description = f"Set personal embed color to: #{color.value:0>6X}"
-        except:
+            embed.description = embed.description = f"Set personal embed color to: #{colorcls.value:0>6X}"
+        except ValueError as err:
+            self.logger.error(err)
             embed.description = f"Invalid color format provided"
-        await interaction.response.send_message(embed=embed)
-        
-        embed = self.embed.create_embed(interaction.response)
         await interaction.response.send_message(embed=embed)
 
 async def setup(bot):
