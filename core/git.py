@@ -49,7 +49,6 @@ class Git:
                     if(diff.change_type in ["A", "R", "M"]):
                         await self.bot.load_extension(bpath)
                 
-                # Write to embed what files changed
                 if(file.change_type == "A"):
                     embed.description += f"[Added] {bpath}"
                 elif(file.change_type == "D"):
