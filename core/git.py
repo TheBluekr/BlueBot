@@ -26,6 +26,8 @@ class Git:
         origin.fetch()
         diff = self.repo.index.diff(origin.refs['Development'].object.hexsha)
         if(len(diff) > 0):
+            bShutdown = False
+
             self.logger.info("File update found on repo, updating files")
             embed = self.bot.embed.create_embed(self.bot.user)
             embed.description = "Files updated from repository:```"
@@ -37,7 +39,7 @@ class Git:
                 apath = apath.replace("/", ".").replace(".py", "")
                 if(apath == "bot" or apath.startswith("core.")):
                     # Reboot entire bot to load new bot.py or core/file.py
-                    exit(1)
+                    bShutdown = True
                 elif(apath.startswith("cogs.")):
                     if(diff.change_type in ["D", "R", "M", "T"]):
                         await self.bot.unload_extension(apath)
@@ -53,3 +55,6 @@ class Git:
             channel = await self.bot.fetch_channel(self.updateChannel)
             if(channel != None):
                 await channel.send(embed=embed)
+            
+            if(bShutdown):
+                self.bot.close()
