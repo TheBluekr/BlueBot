@@ -28,9 +28,10 @@ class Git:
         if(len(diff) > 0):
             self.logger.info("File update found on repo, updating files")
             channel = discord.utils.get(self.bot.get_all_channels(), id=self.updateChannel)
-            embed = self.bot.embed.create_embed(self.bot.user)
-            embed.description = "Update found on repository, updating code"
-            await channel.send(embed=embed)
+            if(channel != None):
+                embed = self.bot.embed.create_embed(self.bot.user)
+                embed.description = "Update found on repository, updating code"
+                await channel.send(embed=embed)
             origin.pull()
             for file in diff:
                 apath = file.a_path
