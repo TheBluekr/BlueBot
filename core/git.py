@@ -29,7 +29,7 @@ class Git:
             apath = apath.replace("/", ".").replace(".py", "")
             if(apath == "bot" or apath.startswith("core.")):
                 # Reboot entire bot to load new bot.py or core/file.py
-                pass
+                exit(1)
             elif(apath.startswith("cogs.")):
                 if(diff.change_type in ["D", "R", "M", "T"]):
                     await self.bot.unload_extension(apath)
