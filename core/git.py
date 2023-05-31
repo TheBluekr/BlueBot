@@ -57,6 +57,8 @@ class Git:
                     embed.description += f"[Renamed] {apath} -> {bpath}"
                 elif(diff.change_type == "M"):
                     embed.description += f"[Modified] {apath}"
+                else:
+                    embed.description += f"[Unknown] {diff.change_type} - {apath} - {bpath}"
             
             embed.description += "```"
 
