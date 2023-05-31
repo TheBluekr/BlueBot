@@ -55,6 +55,7 @@ class Bot(commands.Bot):
     @commands.Cog.listener()
     async def on_ready(self):
         self.logger.info(f"Logged in as {self.user.name}")
+        self.git.update_code.start()
         #fmt = await self.tree.sync()
         #self.logger.info(f"Synced {len(fmt)} commands")
     

@@ -18,28 +18,24 @@ class Git:
         self.repo = git.Repo(".")
         self.logger.info("Initialized Git repo")
 
-        # self.update_code.start()
-        self.logger.info(f"{self.repo.head.object.hexsha}")
-        origin = self.repo.remotes.origin
-        origin.fetch()
-        self.logger.info(f"{origin.refs['Development'].object.hexsha}")
-        diff = self.repo.index.diff(origin.refs['Development'].object.hexsha)
-        origin.pull()
-        self.logger.info(f"{diff}")
-        for file in diff:
-            path = file.a_path
-            path = path.replace("/", ".").replace(".py", "")
-            if(path == "bot" or path.startswith("core.")):
-                # Reboot entire bot to load new bot.py or core/file.py
-                pass
-            elif(path.startswith("cogs.")):
-                self.bot.unload_extension(path)
-                self.bot.load_extension(path)
-            self.logger.info(path)
-    
     @tasks.loop(seconds=60)
     async def update_code(self):
-        self.logger.info(f"{self.repo.head.object.hexsha}")
         origin = self.repo.remotes.origin
         origin.fetch()
-        self.logger.info(f"{origin.refs['Development'].object.hexsha}")
+        diff = self.repo.index.diff(origin.refs['Development'].object.hexsha)
+        origin.pull()
+        for file in diff:
+            apath = file.a_path
+            apath = apath.replace("/", ".").replace(".py", "")
+            if(apath == "bot" or apath.startswith("core.")):
+                # Reboot entire bot to load new bot.py or core/file.py
+                pass
+            elif(apath.startswith("cogs.")):
+                if(diff.change_type in ["D", "R", "M", "T"]):
+                    await self.bot.unload_extension(apath)
+            
+            bpath = file.b_path
+            bpath = bpath.replace("/", ".").replace(".py", "")
+            if(bpath.startswith("cogs.")):
+                if(diff.change_type in ["A", "R", "M"]):
+                    await self.bot.load_extension(bpath)
