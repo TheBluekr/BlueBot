@@ -4,8 +4,9 @@ import typing
 import requests
 from io import BytesIO
 import imghdr
-from typing import Union
+from typing import Union, Optional
 
+from discord import app_commands
 from discord.ext import commands
 
 import sqlalchemy
@@ -48,6 +49,83 @@ class PersonalRoles(commands.Cog):
     @commands.Cog.listener()
     async def on_member_remove(self, member: discord.Member):
         pass
+
+    personalrole = app_commands.Group(name="personalrole", description="Set properties of your personal role")
+
+    @personalrole.command()
+    async def name(self, interaction: discord.Interaction, name: str):
+        try:
+            session = self.db.Session()
+            row = session.query(RoleModel).filter(RoleModel.guild_id == interaction.guild.id, RoleModel.user_id == interaction.user.id).one()
+            role = interaction.user.get_role(row.role_id)
+            embed = self.embed.create_embed(interaction.user)
+            if(role == None):
+                embed.description = "No personal role found"
+                return await interaction.response.send_message(embed=embed)
+            await role.edit(name=name)
+            embed.description = f"Set {role} title to: {name}"
+            await interaction.response.send_message(embed=embed)
+        except Exception as e:
+            self.logger.error(f"Error occured in personalrole.name: {e}")
+        finally:
+            session.close()
+    
+    @personalrole.command()
+    async def color(self, interaction: discord.Interaction, color: str):
+        try:
+            session = self.db.Session()
+            row = session.query(RoleModel).filter(RoleModel.guild_id == interaction.guild.id, RoleModel.user_id == interaction.user.id).one()
+            role = interaction.user.get_role(row.role_id)
+            embed = self.embed.create_embed(interaction.user)
+            if(role == None):
+                embed.description = "No personal role found"
+                return await interaction.response.send_message(embed=embed)
+            try:
+                colorcls = discord.Color.from_str(color)
+                await role.edit(color=colorcls)
+                embed.description = f"Set {role} color to: #{colorcls.value:0>6X}"
+            except:
+                embed.description = f"Invalid color format provided"
+            await interaction.response.send_message(embed=embed)
+        except Exception as e:
+            self.logger.error(f"Error occured in pr.name: {e}")
+        finally:
+            session.close()
+    
+    @personalrole.command()
+    async def icon(self, interaction: discord.Interaction, url: str = None, attachment: discord.Attachment = None):
+        try:
+            session = self.db.Session()
+            row = session.query(RoleModel).filter(RoleModel.guild_id == interaction.guild.id, RoleModel.user_id == interaction.user.id).one()
+            role = interaction.user.get_role(row.role_id)
+            embed = self.embed.create_embed(interaction.user)
+            if(role == None):
+                embed.description = "No personal role found"
+                return await interaction.response.send_message(embed=embed)
+            if(url == None and attachment == None):
+                return await role.edit(display_icon=None)
+            image_bytes = None
+            if(url != None):
+                response = requests.get(url)
+                if(response.status_code != 200):
+                    embed.description = f"URL return error code {response.status_code}"
+                    return await interaction.response.send_message(embed=embed)
+                image_bytes = BytesIO(response.content)
+                if(imghdr.what(image_bytes) == None):
+                    embed.description = f"Invalid image format provided in URL"
+                    return await interaction.response.send_message(embed=embed)
+            else:             
+                image_bytes = BytesIO(await attachment.read())
+            if(image_bytes.getbuffer().nbytes > 1024*256): # 262144
+                embed.description = "Attachment is over the 256kb file size limit"
+                return await interaction.response.send_message(embed=embed)
+            await role.edit(display_icon=image_bytes.read())
+            embed.description = f"Set {role} icon"
+            await interaction.response.send_message(embed=embed)
+        except Exception as e:
+            self.logger.error(f"Error occured in pr.name: {e}")
+        finally:
+            session.close()
 
     @commands.group(pass_context=True)
     async def pr(self, ctx):
@@ -153,82 +231,6 @@ class PersonalRoles(commands.Cog):
             await ctx.send(embed=embed)
         except Exception as e:
             self.logger.error(f"Error occured in pr.list: {e}")
-        finally:
-            session.close()
-
-    @pr.command()
-    async def name(self, ctx, *, name: str):
-        try:
-            session = self.db.Session()
-            row = session.query(RoleModel).filter(RoleModel.guild_id == ctx.guild.id, RoleModel.user_id == ctx.author.id).one()
-            role = ctx.author.get_role(row.role_id)
-            embed = self.embed.create_embed(ctx.author)
-            if(role == None):
-                embed.description = "No personal role found"
-                return await ctx.send(embed=embed)
-            await role.edit(name=name)
-            embed.description = f"Set {role} title to: {name}"
-            await ctx.send(embed=embed)
-        except Exception as e:
-            self.logger.error(f"Error occured in pr.name: {e}")
-        finally:
-            session.close()
-    
-    @pr.command()
-    async def color(self, ctx, color: discord.Colour):
-        try:
-            session = self.db.Session()
-            row = session.query(RoleModel).filter(RoleModel.guild_id == ctx.guild.id, RoleModel.user_id == ctx.author.id).one()
-            role = ctx.author.get_role(row.role_id)
-            embed = self.embed.create_embed(ctx.author)
-            if(role == None):
-                embed.description = "No personal role found"
-                return await ctx.send(embed=embed)
-            await role.edit(color=color)
-            embed.description = f"Set {role} color to: #{color.value:0>6X}"
-            await ctx.send(embed=embed)
-        except Exception as e:
-            self.logger.error(f"Error occured in pr.name: {e}")
-        finally:
-            session.close()
-    
-    @color.error
-    async def color_error(self, ctx, error):
-        if(isinstance(error, commands.BadColorArgument)):
-            await ctx.send("Invalid color format given")
-    
-    @pr.command()
-    async def icon(self, ctx, url=None):
-        try:
-            session = self.db.Session()
-            row = session.query(RoleModel).filter(RoleModel.guild_id == ctx.guild.id, RoleModel.user_id == ctx.author.id).one()
-            role = ctx.author.get_role(row.role_id)
-            embed = self.embed.create_embed(ctx.author)
-            if(role == None):
-                embed.description = "No personal role found"
-                return await ctx.send(embed=embed)
-            if(len(ctx.message.attachments) == 0 and url == None):
-                return await role.edit(display_icon=None)
-            image_bytes = None
-            if(url != None):
-                response = requests.get(url)
-                if(response.status_code != 200):
-                    embed.description = f"URL return error code {response.status_code}"
-                    return await ctx.send(embed=embed)
-                image_bytes = BytesIO(response.content)
-                if(imghdr.what(image_bytes) == None):
-                    embed.description = f"Invalid image format provided in URL"
-                    return await ctx.send(embed=embed)
-            else:             
-                attachment = ctx.message.attachments[0]
-                image_bytes = BytesIO(await attachment.read())
-            if(image_bytes.getbuffer().nbytes > 1024*256): # 262144
-                embed.description = "Attachment is over the 256kb file size limit"
-                return await ctx.send(embed=embed)
-            await role.edit(display_icon=image_bytes.read())
-            embed.description = f"Set {role} icon"
-        except Exception as e:
-            self.logger.error(f"Error occured in pr.name: {e}")
         finally:
             session.close()
     
