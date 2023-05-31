@@ -1,5 +1,6 @@
 import discord
 from discord.ext import tasks
+from discord.ext.commands import ExtensionFailed
 import git
 import os
 import logging
@@ -31,23 +32,33 @@ class Git:
             self.logger.info("File update found on repo, updating files")
             embed = self.bot.embed.create_embed(self.bot.user)
             embed.description = "Files updated in repository:```"
-    
+
+            channel = await self.bot.fetch_channel(self.updateChannel)    
+
             origin.pull()
             for file in diff:
                 apath = file.a_path
                 apath = apath.replace("/", ".").replace(".py", "")
                 if(apath == "bot" or apath.startswith("core.")):
                     # Reboot entire bot to load new bot.py or core/file.py
+                    self.logger.info("Core code updated, marking for reboot")
                     bShutdown = True
                 elif(apath.startswith("cogs.")):
-                    if(diff.change_type in ["D", "R", "M", "T"]):
+                    if(file.change_type in ["D", "R", "M"]):
                         await self.bot.unload_extension(apath)
                 
                 bpath = file.b_path
                 bpath = bpath.replace("/", ".").replace(".py", "")
                 if(bpath.startswith("cogs.")):
-                    if(diff.change_type in ["A", "R", "M"]):
-                        await self.bot.load_extension(bpath)
+                    if(file.change_type in ["A", "R", "M"]):
+                        try:
+                            await self.bot.load_extension(bpath)
+                        except ExtensionFailed as err:
+                            self.logger.error(f"{err.name}: {err.original}")
+                            errorEmbed = self.bot.embed.create_embed(self.bot.user)
+                            embed.description = f"Error occured in {err.name}:\n```{err.original}```"
+                            if(channel != None):
+                                await channel.send(embed=errorEmbed)
                 
                 if(file.change_type == "A"):
                     embed.description += f"[Added] {file.b_path}"
@@ -62,7 +73,6 @@ class Git:
             
             embed.description += "```"
 
-            channel = await self.bot.fetch_channel(self.updateChannel)
             if(channel != None):
                 await channel.send(embed=embed)
             
