@@ -50,15 +50,15 @@ class Git:
                         await self.bot.load_extension(bpath)
                 
                 if(file.change_type == "A"):
-                    embed.description += f"[Added] {bpath}"
+                    embed.description += f"[Added] {file.b_path}"
                 elif(file.change_type == "D"):
-                    embed.description += f"[Deleted] {apath}"
+                    embed.description += f"[Deleted] {file.a_path}"
                 elif(file.change_type == "R"):
-                    embed.description += f"[Renamed] {apath} -> {bpath}"
+                    embed.description += f"[Renamed] {file.a_path} -> {file.b_path}"
                 elif(file.change_type == "M"):
-                    embed.description += f"[Modified] {apath}"
+                    embed.description += f"[Modified] {file.a_path}"
                 else:
-                    embed.description += f"[Unknown] {diff.change_type} - {apath} - {bpath}"
+                    embed.description += f"[Unknown] {diff.change_type} - {file.a_path} - {file.b_path}"
             
             embed.description += "```"
 
