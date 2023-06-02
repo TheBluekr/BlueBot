@@ -25,7 +25,7 @@ class Git:
     async def update_code(self):
         origin = self.repo.remotes.origin
         origin.fetch()
-        diff = self.repo.index.diff(origin.refs['Development'].object.hexsha)
+        diff = self.repo.index.diff(origin.refs[os.getenv("GIT_BRANCH")].object.hexsha)
         if(len(diff) > 0):
             bShutdown = False
 
