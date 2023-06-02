@@ -2,7 +2,7 @@ import discord
 from discord.ext import commands
 import os
 import logging
-from core import Database, EmbedColor
+from core import Database, EmbedColor, Git
 
 ch = logging.StreamHandler()
 ch.setLevel(logging.INFO)
@@ -34,6 +34,8 @@ class Bot(commands.Bot):
         self.db = Database()
 
         self.embed = EmbedColor(self)
+        
+        self.git = Git(self)
 
         os.makedirs(f"{os.getcwd()}/settings", exist_ok=True)
     
@@ -44,7 +46,7 @@ class Bot(commands.Bot):
                     cog = f"cogs.{cog.replace('.py', '')}"
                     await self.load_extension(cog)
                 except Exception as e:
-                    print(f"{cog} is failed to load:")
+                    self.logger.error(f"{cog} is failed to load:")
                     raise e
         
         self.logger.info("Finished loading all cogs")
@@ -53,6 +55,9 @@ class Bot(commands.Bot):
     @commands.Cog.listener()
     async def on_ready(self):
         self.logger.info(f"Logged in as {self.user.name}")
+        self.git.update_code.start()
+        #fmt = await self.tree.sync()
+        #self.logger.info(f"Synced {len(fmt)} commands")
     
     @commands.Cog.listener()
     async def on_disconnect(self):

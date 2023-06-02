@@ -38,12 +38,6 @@ class Buttons(commands.Cog):
                     perms.view_channel = True
                     await channel.set_permissions(interaction.user, overwrite=perms)
                 await interaction.response.defer()
-    
-    @is_guild_owner()
-    @commands.guild_only()
-    @commands.command()
-    async def send(self, ctx, channel: typing.Union[discord.TextChannel, discord.VoiceChannel], *, message: str):
-        await channel.send(message)
 
     @is_guild_owner()
     @commands.guild_only()

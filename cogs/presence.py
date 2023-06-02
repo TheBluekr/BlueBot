@@ -15,10 +15,6 @@ class Presence(commands.Cog):
     
     @commands.Cog.listener()
     async def on_ready(self):
-        self.async_init.start()
-    
-    @tasks.loop(count=1)
-    async def async_init(self):
         await self.bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name="users"))
 
     @commands.group(pass_context=True)
