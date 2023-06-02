@@ -87,13 +87,13 @@ class Buttons(commands.Cog):
     @commands.command()
     async def sync(self, ctx):
         fmt = await self.bot.tree.sync(guild=ctx.guild)
-        await ctx.send(f"Synced {fmt} commands for guild")
+        await ctx.send(f"Synced {len(fmt)} commands for guild")
     
     @commands.is_owner()
     @commands.command()
     async def globalsync(self, ctx):
         fmt = await self.bot.tree.sync()
-        await ctx.send(f"Synced {fmt} commands globally")
+        await ctx.send(f"Synced {len(fmt)} commands globally")
     
     @commands.hybrid_command(description="Returns latency of bot")
     async def ping(self, ctx):
