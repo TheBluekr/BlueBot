@@ -95,8 +95,11 @@ class Bluecorp(commands.Cog):
         #await interaction.response.defer(ephemeral=False, thinking=False)
         await interaction.response.send_message(f"Sending message:\n```{message}```", ephemeral=True)
         try:
-            reply = await interaction.channel.fetch_message(int(replyto))
-            await interaction.channel.send(message, reference=reply)
+            if(replyto != None):
+                reply = await interaction.channel.fetch_message(int(replyto))
+                await interaction.channel.send(message, reference=reply)
+            else:
+                await interaction.channel.send(message, reference=reply)
         except discord.NotFound:
             await interaction.channel.send(message)
 
