@@ -87,7 +87,7 @@ class Bluecorp(commands.Cog):
         except Exception as e:
             result = f"{type(e).__name__}: {e}"
         embed = self.embed.create_embed(interaction.user)
-        embed.description = str(result)
+        embed.description = f"```{result}```"
         await interaction.response.send_message(embed=embed)
     
     @eval_fn.error
@@ -96,7 +96,7 @@ class Bluecorp(commands.Cog):
         if(isinstance(error, app_commands.CheckFailure)):
             embed.description = "No permission to execute this command"
         else:
-            embed.description = str(error)
+            embed.description = f"```{error}```"
         await interaction.response.send_message(embed=embed)
     
     @app_commands.command()
