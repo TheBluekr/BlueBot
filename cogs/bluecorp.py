@@ -87,7 +87,7 @@ class Bluecorp(commands.Cog):
         except Exception as e:
             result = f"{type(e).__name__}: {e}"
         embed = self.embed.create_embed(interaction.user)
-        embed.description = result
+        embed.description = str(result)
         await interaction.response.send_message(embed=embed)
     
     @eval_fn.error
