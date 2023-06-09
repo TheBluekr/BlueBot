@@ -15,6 +15,7 @@ class Bluecorp(commands.Cog):
         self.bot = bot
         self.logger = logger
         self.logger.info(f"Loaded cog {__cogname__}")
+        self.embed = self.bot.embed
     
     def insert_returns(self, body):
         # insert return stmt if the last expression is a expression statement
@@ -85,7 +86,18 @@ class Bluecorp(commands.Cog):
             result = (await eval(f"{fn_name}()", env))
         except Exception as e:
             result = f"{type(e).__name__}: {e}"
-        await interaction.response.send_message(f"```{result}```")
+        embed = self.embed.create_embed(interaction.user)
+        embed.description = result
+        await interaction.response.send_message(embed=embed)
+    
+    @eval_fn.error
+    async def eval_error(self, interaction: discord.Interaction, error):
+        embed = self.embed.create_embed(interaction.user)
+        if(isinstance(error, app_commands.CheckFailure)):
+            embed.description = "No permission to execute this command"
+        else:
+            embed.description = error
+        interaction.response.send_message(embed=embed)
     
     @app_commands.command()
     @app_commands.checks.has_permissions(manage_messages=True)
