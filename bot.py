@@ -66,10 +66,6 @@ class Bot(commands.Bot):
     @commands.Cog.listener()
     async def on_disconnect(self):
         self.db.close()
-    
-    @commands.command()
-    async def restart(self, ctx: commands.Context):
-        await self.close()
 
 bot = Bot()
 bot.run(os.getenv("TOKEN"), log_handler=None)
