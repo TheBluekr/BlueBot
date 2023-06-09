@@ -31,9 +31,12 @@ class Bluecorp(commands.Cog):
         if isinstance(body[-1], ast.With):
             self.insert_returns(body[-1].body)
 
+    def check_owner(self, interaction: discord.Interaction) -> bool:
+        return interaction.user.id == 121546822765248512
 
-    @commands.is_owner()
-    @commands.hybrid_command()
+    @app_commands.command()
+    @app_commands.guilds(discord.Object(138365437791567872))
+    @app_commands.check(check_owner)
     async def eval_fn(self, ctx: commands.Context, *, cmd):
         """Evaluates input.
         Input is interpreted as newline seperated statements.
@@ -88,9 +91,10 @@ class Bluecorp(commands.Cog):
     @commands.hybrid_command()
     async def purge(self, ctx, limit: int=100):
         await ctx.channel.purge(limit=limit)
-    
+
     @app_commands.command()
-    @app_commands.guilds(138365437791567872)
+    @app_commands.guilds(discord.Object(138365437791567872))
+    @app_commands.check(check_owner)
     async def send(self, interaction: discord.Interaction, message: str, replyto: str = None):
         #await interaction.response.defer(ephemeral=False, thinking=False)
         await interaction.response.send_message(f"Sending message:\n```{message}```", ephemeral=True)
