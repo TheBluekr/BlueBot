@@ -37,7 +37,7 @@ class Bluecorp(commands.Cog):
     @app_commands.command()
     @app_commands.guilds(discord.Object(138365437791567872))
     @app_commands.check(check_owner)
-    async def eval_fn(self, ctx: commands.Context, *, cmd):
+    async def eval_fn(self, interaction: discord.Interaction, *, cmd):
         """Evaluates input.
         Input is interpreted as newline seperated statements.
         If the last statement is an expression, that is the return value.
@@ -73,10 +73,10 @@ class Bluecorp(commands.Cog):
         self.insert_returns(body)
 
         env = {
-            'bot': ctx.bot,
+            'client': interaction.client,
             'discord': discord,
             'commands': commands,
-            'ctx': ctx,
+            'interaction': interaction,
             '__import__': __import__
         }
         exec(compile(parsed, filename="<ast>", mode="exec"), env)
@@ -85,10 +85,11 @@ class Bluecorp(commands.Cog):
             result = (await eval(f"{fn_name}()", env))
         except Exception as e:
             result = f"{type(e).__name__}: {e}"
-        await ctx.send(f"```{result}```")
+        await interaction.response.send_message(f"```{result}```")
     
-    @commands.is_owner()
-    @commands.hybrid_command()
+    @app_commands.command()
+    @app_commands.checks.has_permissions(manage_messages=True)
+    @app_commands.guild_only()
     async def purge(self, ctx, limit: int=100):
         await ctx.channel.purge(limit=limit)
 
