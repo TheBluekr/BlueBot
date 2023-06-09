@@ -97,7 +97,7 @@ class Bluecorp(commands.Cog):
             embed.description = "No permission to execute this command"
         else:
             embed.description = error
-        interaction.response.send_message(embed=embed)
+        await interaction.response.send_message(embed=embed)
     
     @app_commands.command()
     @app_commands.checks.has_permissions(manage_messages=True)
