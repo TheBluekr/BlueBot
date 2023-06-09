@@ -15,6 +15,7 @@ class Bluecorp(commands.Cog):
         self.bot = bot
         self.logger = logger
         self.logger.info(f"Loaded cog {__cogname__}")
+        self.embed = self.bot.embed
     
     def insert_returns(self, body):
         # insert return stmt if the last expression is a expression statement
@@ -31,10 +32,13 @@ class Bluecorp(commands.Cog):
         if isinstance(body[-1], ast.With):
             self.insert_returns(body[-1].body)
 
+    def check_owner(interaction: discord.Interaction) -> bool:
+        return interaction.user.id == interaction.client.application.owner.id
 
-    @commands.is_owner()
-    @commands.hybrid_command()
-    async def eval_fn(self, ctx: commands.Context, *, cmd):
+    @app_commands.command()
+    @app_commands.guilds(discord.Object(138365437791567872))
+    @app_commands.check(check_owner)
+    async def eval_fn(self, interaction: discord.Interaction, cmd: str):
         """Evaluates input.
         Input is interpreted as newline seperated statements.
         If the last statement is an expression, that is the return value.
@@ -70,10 +74,10 @@ class Bluecorp(commands.Cog):
         self.insert_returns(body)
 
         env = {
-            'bot': ctx.bot,
+            'client': interaction.client,
             'discord': discord,
             'commands': commands,
-            'ctx': ctx,
+            'interaction': interaction,
             '__import__': __import__
         }
         exec(compile(parsed, filename="<ast>", mode="exec"), env)
@@ -82,15 +86,28 @@ class Bluecorp(commands.Cog):
             result = (await eval(f"{fn_name}()", env))
         except Exception as e:
             result = f"{type(e).__name__}: {e}"
-        await ctx.send(f"```{result}```")
+        embed = self.embed.create_embed(interaction.user)
+        embed.description = f"```{result}```"
+        await interaction.response.send_message(embed=embed)
     
-    @commands.is_owner()
-    @commands.hybrid_command()
-    async def purge(self, ctx, limit: int=100):
-        await ctx.channel.purge(limit=limit)
+    @eval_fn.error
+    async def eval_error(self, interaction: discord.Interaction, error: app_commands.AppCommandError):
+        embed = self.embed.create_embed(interaction.user)
+        if(isinstance(error, app_commands.CheckFailure)):
+            embed.description = "No permission to execute this command"
+        else:
+            embed.description = f"```{error}```"
+        await interaction.response.send_message(embed=embed)
     
     @app_commands.command()
-    @app_commands.guilds(138365437791567872)
+    @app_commands.checks.has_permissions(manage_messages=True)
+    @app_commands.guild_only()
+    async def purge(self, ctx, limit: int=100):
+        await ctx.channel.purge(limit=limit)
+
+    @app_commands.command()
+    @app_commands.guilds(discord.Object(138365437791567872))
+    @app_commands.check(check_owner)
     async def send(self, interaction: discord.Interaction, message: str, replyto: str = None):
         #await interaction.response.defer(ephemeral=False, thinking=False)
         await interaction.response.send_message(f"Sending message:\n```{message}```", ephemeral=True)

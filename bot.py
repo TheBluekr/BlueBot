@@ -56,16 +56,16 @@ class Bot(commands.Bot):
     async def on_ready(self):
         self.logger.info(f"Logged in as {self.user.name}")
         self.git.update_code.start()
+        guild = discord.Object(id=138365437791567872)
+        self.tree.copy_global_to(guild=guild)
+        fmt = await self.tree.sync(guild=guild)
+        # Global syncs get ratelimited fast
         #fmt = await self.tree.sync()
-        #self.logger.info(f"Synced {len(fmt)} commands")
+        self.logger.info(f"Synced {len(fmt)} commands")
     
     @commands.Cog.listener()
     async def on_disconnect(self):
         self.db.close()
-    
-    @commands.command()
-    async def restart(self, ctx: commands.Context):
-        await self.close()
 
 bot = Bot()
 bot.run(os.getenv("TOKEN"), log_handler=None)
