@@ -33,7 +33,7 @@ class Bluecorp(commands.Cog):
             self.insert_returns(body[-1].body)
 
     def check_owner(interaction: discord.Interaction) -> bool:
-        return interaction.user.id == 121546822765248512
+        return interaction.user.id == interaction.client.application.owner.id
 
     @app_commands.command()
     @app_commands.guilds(discord.Object(138365437791567872))
