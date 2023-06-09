@@ -91,12 +91,12 @@ class Bluecorp(commands.Cog):
         await interaction.response.send_message(embed=embed)
     
     @eval_fn.error
-    async def eval_error(self, interaction: discord.Interaction, error):
+    async def eval_error(self, interaction: discord.Interaction, error: app_commands.AppCommandError):
         embed = self.embed.create_embed(interaction.user)
         if(isinstance(error, app_commands.CheckFailure)):
             embed.description = "No permission to execute this command"
         else:
-            embed.description = error
+            embed.description = str(error)
         await interaction.response.send_message(embed=embed)
     
     @app_commands.command()
