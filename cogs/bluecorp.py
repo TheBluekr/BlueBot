@@ -37,7 +37,7 @@ class Bluecorp(commands.Cog):
     @app_commands.command()
     @app_commands.guilds(discord.Object(138365437791567872))
     @app_commands.check(check_owner)
-    async def eval_fn(self, interaction: discord.Interaction, *, cmd):
+    async def eval_fn(self, interaction: discord.Interaction, cmd: str):
         """Evaluates input.
         Input is interpreted as newline seperated statements.
         If the last statement is an expression, that is the return value.
