@@ -95,7 +95,7 @@ class Buttons(commands.Cog):
                 embed.description = "```Failed to find channel```"
                 return await interaction.response.send_message(embed=embed)
             view.add_item(discord.ui.Button(label=label, style=style, emoji=emoji, custom_id=f"channel.{channel.id}"))
-        elif(type == "url"):
+        elif(type.value == "url"):
             view.add_item(discord.ui.Button(label=label, style=discord.ButtonStyle.url, url=value))
         
         await message.edit(view=view)
