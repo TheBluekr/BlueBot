@@ -103,6 +103,9 @@ class Buttons(commands.Cog):
     async def clear(self, interaction: discord.Interaction, message: int):
         message = await interaction.channel.fetch_message(message)
         await message.edit(view=None)
+        embed = self.embed.create_embed(interaction.user)
+        embed.description = "```Cleared buttons```"
+        await interaction.response.send_message(embed=embed)
 
     @commands.is_owner()
     @commands.guild_only()
