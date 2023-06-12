@@ -67,6 +67,10 @@ class Buttons(commands.Cog):
 
         embed = self.embed.create_embed(interaction.user)
 
+        if(message == None):
+            embed.description = "```Failed to find message```"
+            return await interaction.response.send_message(embed=embed)
+
         if(type.value == "role"):
             match = re.compile(r'([0-9]{15,20})$').match(value) or re.match(r'<@&([0-9]{15,20})>$', value)
             if match:
