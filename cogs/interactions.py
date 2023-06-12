@@ -43,10 +43,8 @@ class Buttons(commands.Cog):
                 await interaction.response.defer()
 
     button = app_commands.Group(name="button", description="Manage buttons on messages")
-
-    add = app_commands.Group(name="add", description="Add button to a message", parent=button)
     
-    @add.command()
+    @button.command()
     @app_commands.checks.has_permissions(manage_guild=True)
     @app_commands.choices(style=[app_commands.Choice(name="primary", value="primary"),
                                 app_commands.Choice(name="secondary", value="secondary"),
