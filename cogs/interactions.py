@@ -120,7 +120,7 @@ class Buttons(commands.Cog):
     
     @commands.is_owner()
     @commands.command()
-    async def clearsync(self, ctx: commands.Contex):
+    async def clearsync(self, ctx: commands.Context):
         ctx.bot.tree.clear_commands(guild=None)
         await ctx.bot.tree.sync(guild=None)
     
