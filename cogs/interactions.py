@@ -63,11 +63,11 @@ class Buttons(commands.Cog):
     async def add(self, interaction: discord.Interaction, message: str, label: str, style: app_commands.Choice[str], type: app_commands.Choice[str], value: str, emoji: str=None):
         message = await interaction.channel.fetch_message(int(message))
         view = discord.ui.View.from_message(message)
-        style = getattr(discord.ButtonStyle, style)
+        style = getattr(discord.ButtonStyle, style.value)
 
         embed = self.embed.create_embed(interaction.user)
 
-        if(type == "role"):
+        if(type.value == "role"):
             match = re.compile(r'([0-9]{15,20})$').match(value) or re.match(r'<@&([0-9]{15,20})>$', value)
             if match:
                 role = interaction.guild.get_role(int(match.group(1)))
@@ -76,7 +76,7 @@ class Buttons(commands.Cog):
             if role is None:
                 return await interaction.response.send_message("No role found")
             view.add_item(discord.ui.Button(label=label, style=style, emoji=emoji, custom_id=f"role.{role.id}"))
-        elif(type == "channel"):
+        elif(type.value == "channel"):
             match = re.compile(r'([0-9]{15,20})$').match(value) or re.match(r'<#([0-9]{15,20})>$', value)
             channel = None
             guild = interaction.guild
