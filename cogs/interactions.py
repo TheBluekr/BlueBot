@@ -95,7 +95,8 @@ class Buttons(commands.Cog):
             view.add_item(discord.ui.Button(label=label, style=discord.ButtonStyle.url, url=value))
         
         await message.edit(view=view)
-        await interaction.response.defer()
+        embed.description = "```Added button```"
+        await interaction.response.send_message(embed=embed)
     
     @button.command()
     @app_commands.checks.has_permissions(manage_guild=True)
