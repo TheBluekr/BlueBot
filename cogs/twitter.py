@@ -193,8 +193,8 @@ class Twitter(commands.Cog):
         embed = self.embed.create_embed(member)
         embed.description = text
         embed.set_author(name=f"{twitter_user.name} (@{twitter_user.screen_name})", url=f"https://twitter.com/{twitter_user.screen_name}", icon_url=f"{twitter_user.profile_image_url_https}")
-        embed.title = "View tweet"
-        embed.url = f"https://twitter.com/{twitter_user.screen_name}/status/{tweet.id}"
+        #embed.title = "View tweet"
+        #embed.url = f"https://twitter.com/{twitter_user.screen_name}/status/{tweet.id}"
         embed.set_footer(text="Twitter", icon_url="https://abs.twimg.com/icons/apple-touch-icon-192x192.png")
         embed.timestamp = tweet.created_at
         media = tweet.entities.get("media", None)
