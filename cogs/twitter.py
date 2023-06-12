@@ -48,6 +48,7 @@ class Twitter(commands.Cog):
     @tasks.loop(minutes=1)
     async def poll_twitter(self):
         try:
+            view = discord.ui.View()
             session = self.db.Session()
             rows = session.query(TwitterModel).all()
             # Maybe should cache in case same user is multiple channels
@@ -70,8 +71,7 @@ class Twitter(commands.Cog):
 
                     for tweet in timeline:
                         embed = self.create_tweet_embed(member, twitter_user, tweet)
-                        view = discord.ui.View()
-                        view.add_item(discord.ui.Button(label="View tweet", style=discord.ButtonStyle.url, url=f"https://twitter.com/{twitter_user.screen_name}/status/{tweet.id}"))
+                        #view.add_item(discord.ui.Button(label="View tweet", style=discord.ButtonStyle.url, url=f"https://twitter.com/{twitter_user.screen_name}/status/{tweet.id}"))
                         await channel.send(embed=embed, view=view)
 
                         row.tweet_id = tweet.id
@@ -86,8 +86,7 @@ class Twitter(commands.Cog):
 
                     for tweet in timeline:
                         embed = self.create_tweet_embed(member, twitter_user, tweet)
-                        view = discord.ui.View()
-                        view.add_item(discord.ui.Button(label="View tweet", style=discord.ButtonStyle.url, url=f"https://twitter.com/{twitter_user.screen_name}/status/{tweet.id}"))
+                        #view.add_item(discord.ui.Button(label="View tweet", style=discord.ButtonStyle.url, url=f"https://twitter.com/{twitter_user.screen_name}/status/{tweet.id}"))
                         await channel.send(embed=embed, view=view)
             session.commit()
         except Exception as e:
