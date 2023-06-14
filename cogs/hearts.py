@@ -68,8 +68,9 @@ class HeartsLobby(CardGame):
         pass
         
     def dealCards(self):
-        for player in self.players:
-            player.addCard(self.deck.deal())
+        while(self.deck.size > 0):
+            for player in self.players:
+                player.addCard(self.deck.deal())
     
     def create_embed(self):
         embed = discord.Embed(title="Hearts lobby", description="Tricks played:\n```None```")
