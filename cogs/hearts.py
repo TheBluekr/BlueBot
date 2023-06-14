@@ -60,7 +60,7 @@ class HeartsLobby(CardGame):
         self.roundNum += 1
         self.dealer = self.players[self.roundNum % len(self.players)]
 
-        embed = self.create_embed(self.bot.user)
+        embed = self.create_embed()
         await self.channel.send(embed=embed, view=self.view)
     
     async def finishRound(self):
