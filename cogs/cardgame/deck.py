@@ -28,6 +28,7 @@ class Deck:
     def sort(self):
         self.deck.sort()
 
+    @property
     def size(self) -> int:
         return len(self.deck)
 
