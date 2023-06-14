@@ -67,7 +67,7 @@ class HeartsLobby(CardGame):
         # Handle scoring
         pass
         
-    async def dealCards(self):
+    def dealCards(self):
         for player in self.players:
             player.addCard(self.deck.deal())
     
