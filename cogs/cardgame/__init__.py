@@ -12,9 +12,9 @@ class CardGame:
         
         self.roundNum: int = -1
         self.trickNum: int = 0
-        self.dealer: int = 0
+        self.dealer: Player = Player(0)
         self.currentTrick: Trick = Trick()
-        self.trickWinner: int = -1
+        self.trickWinner: Player = Player(0)
 
         self.players: list = []
     
