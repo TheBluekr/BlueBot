@@ -161,7 +161,7 @@ class Hearts(commands.Cog):
         hand: Hand = player.hand
         for card in hand:
             if current.lower() in str(card).lower():
-                choices.append(str(card))
+                choices.append(app_commands.Choice(name=card, value=card))
         return choices
 
 async def setup(bot):
