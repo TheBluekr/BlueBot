@@ -43,13 +43,13 @@ class Git:
                     # Reboot entire bot to load new bot.py or core/file.py
                     self.logger.info("Core code updated, marking for reboot")
                     bShutdown = True
-                elif(apath.startswith("cogs.")):
+                elif(apath.startswith("cogs.") and apath.count(".") == 1):
                     if(file.change_type in ["D", "R", "M"]):
                         await self.bot.unload_extension(apath)
                 
                 bpath = file.b_path
                 bpath = bpath.replace("/", ".").replace(".py", "")
-                if(bpath.startswith("cogs.")):
+                if(bpath.startswith("cogs.") and bpath.count(".") == 1):
                     if(file.change_type in ["A", "R", "M"]):
                         try:
                             await self.bot.load_extension(bpath)
