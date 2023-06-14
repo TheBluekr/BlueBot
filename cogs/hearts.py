@@ -133,13 +133,11 @@ class Hearts(commands.Cog):
     
     @hearts.command()
     async def hand(self, interaction: discord.Interaction):
-        if(member == None):
-            member = interaction.author
         lobby = self.lobbies.get(interaction.channel.id)
         if(lobby == None):
             return await interaction.response.send_message(f"No lobby exists yet for this channel")
-        player = lobby.getPlayer(member)
-        await interaction.response.send_message(f"```Player: {member}\nHand size: {player.hand.size()}\nHand: {str(player.hand)}```")
+        player = lobby.getPlayer(interaction.user)
+        await interaction.response.send_message(f"```Player: {interaction.user}\nHand size: {player.hand.size()}\nHand: {str(player.hand)}```")
     
     @hearts.command()
     async def play(self, interaction: discord.Interaction, card: str):
