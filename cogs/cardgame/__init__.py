@@ -7,27 +7,27 @@ import discord
 
 class CardGame:
     def __init__(self):
-        self.deck = Deck()
+        self.deck: Deck = Deck()
         self.deck.shuffle()
         
-        self.roundNum = -1
-        self.trickNum = 0
-        self.dealer = 0
-        self.currentTrick = Trick()
-        self.trickWinner = -1
+        self.roundNum: int = -1
+        self.trickNum: int = 0
+        self.dealer: int = 0
+        self.currentTrick: Trick = Trick()
+        self.trickWinner: int = -1
 
-        self.players = []
+        self.players: list = []
     
-    def addPlayer(self, player: discord.Member):
+    def addPlayer(self, player: discord.Member) -> None:
         self.players.append(Player(player.id))
     
-    def getPlayer(self, player: discord.Member):
+    def getPlayer(self, player: discord.Member) -> Player:
         for p in self.players:
             if(p.id == player.id):
                 return p
         return None
     
-    def getPlayerIndex(self, player: discord.Member):
+    def getPlayerIndex(self, player: discord.Member) -> int:
         for p in self.players:
             if(p.id == player.id):
                 return self.players.index(p)
@@ -49,5 +49,5 @@ class CardGame:
         raise NotImplementedError
 
     # show cards played in current trick
-    def printCurrentTrick(self):
+    def returnCurrentTrick(self):
         raise NotImplementedError
