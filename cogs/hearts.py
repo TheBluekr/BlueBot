@@ -51,7 +51,7 @@ class HeartsLobby(CardGame):
         if(len(self.players) < 4):
             return
         
-        self.newRound()
+        await self.newRound()
     
     async def newRound(self):
         self.deck = Deck()
