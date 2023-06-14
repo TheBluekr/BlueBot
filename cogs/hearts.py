@@ -41,7 +41,7 @@ class HeartsLobby(CardGame):
         self.bot = bot
         self.channelid = channel.id
         self.logger = logger
-        self.view = self.LobbyView(self)
+        self.view = LobbyView(self)
     
     @property
     def channel(self):
