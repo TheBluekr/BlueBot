@@ -220,6 +220,8 @@ class Hearts(commands.Cog):
             return await interaction.response.send_message(f"Not enough players have joined yet")
         if(lobby.isActive):
             return await interaction.response.send_message("Lobby is already active")
+        if(lobby.getPlayerIndex(interaction.user) > 0):
+            return await interaction.response.send_message("Only lobby host can start the game")
         await interaction.response.defer()
         await lobby.start_game(interaction)
     
@@ -259,16 +261,10 @@ class Hearts(commands.Cog):
         current = current.replace("spades", "♠")
         
         player: Player = lobby.getPlayer(interaction.user)
-        playerIndex: int = lobby.getPlayerIndex(interaction.user)
-        dealer: Player = lobby.dealer
-        dealerIndex: int = lobby.players.index(dealer)
 
         trick: Trick = lobby.currentTrick
-        #if(trick.getCard(playerIndex) != InvalidCard):
-            #return []
 
-        currentPlayer: Player = lobby.players[(dealerIndex + trick.size) % len(lobby.players)]
-        if(player != currentPlayer):
+        if(player != lobby.currentPlayer):
             return []
 
         hand: Hand = player.hand
