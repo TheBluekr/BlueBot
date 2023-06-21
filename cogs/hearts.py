@@ -2,7 +2,7 @@ import logging
 import discord
 import asyncio
 import random
-import typing
+from typing import Optional, List
 
 from discord import app_commands
 from discord.ext import commands
@@ -12,68 +12,156 @@ from .cardgame.deck import Deck
 from .cardgame.player import Player
 from .cardgame.trick import Trick
 from .cardgame.hand import Hand
+from .cardgame.card import Card, InvalidCard, Rank, Suit
 
 __author__ = "TheBluekr#2702"
 __cogname__ = "bluebot.cogs.hearts"
 logger = logging.getLogger(__cogname__)
 
-class HandView(discord.ui.View):
-    def __init__(self, options, callback, placeholder="Choose a card"):
-        super().__init__()
-        dropdown = discord.ui.Select(placeholder=placeholder, min_values=1, max_values=1, options=options)
-        dropdown.callback = callback
-        self.add_item(dropdown)
-
-class LobbyView(discord.ui.View):
-    def __init__(self, lobby):
-        super().__init__(timeout=None)
-        self.lobby = lobby
-        button = discord.ui.Button(label=f"{discord.utils.get(self.lobby.bot.get_all_members(), id=self.lobby.dealer.id)}'s turn", style=discord.ButtonStyle.blurple)
-        button.callback = self.playCard
-        self.add_item(button)
-    
-    async def playCard(self, interaction: discord.Interaction):
-        pass
-        
 class HeartsLobby(CardGame):
     def __init__(self, bot, channel):
         super().__init__()
         self.bot = bot
         self.channelid = channel.id
         self.logger = logger
-        self.view = LobbyView(self)
+
+        self.isActive = False
+
+        self.cookies: Deck = Deck()
+        self.cookies.clear()
     
     @property
     def channel(self):
         return discord.utils.get(self.bot.get_all_channels(), id=self.channelid)
-
-    async def start_game(self):
-        if(len(self.players) < 4):
-            return
-        
-        await self.newRound()
     
-    async def newRound(self):
-        self.deck = Deck()
-        self.deck.shuffle()
-        self.dealCards()
-        self.roundNum += 1
-        self.dealer = self.players[self.roundNum % len(self.players)]
-
-        embed = self.create_embed()
-        await self.channel.send(embed=embed, view=self.view)
+    def addPlayer(self, player: discord.Member) -> None:
+        player: Player = Player(player.id)
+        setattr(player, "cookies", list())
+        self.players.append(player)
     
-    async def finishRound(self):
-        # Handle scoring
-        pass
-        
     def dealCards(self):
         while(self.deck.size > 0):
             for player in self.players:
                 player.addCard(self.deck.deal())
+
+    async def start_game(self, interaction: discord.Interaction):
+        if(len(self.players) < 3):
+            return
+        
+        await self.newRound()
+        await interaction.followup.send("Started the game")
+        await self.evaluateTrick()
+        #message = f"Currently {self.currentMember}'s turn"
+        #if(self.cookies.size > 0):
+            #message += "\nThis trick has a cookie"
+        #await self.channel.send(message)
+        self.isActive = True
+    
+    async def newRound(self):
+        self.deck = Deck()
+        self.deck.shuffle()
+
+        self.cookies: Deck = Deck()
+        self.cookies.clear()
+
+        cookies = 52 % len(self.players)        
+        for _ in range(cookies):
+            self.cookies.addCard(self.deck.deal())
+        self.dealCards()
+
+        await self.createTrick()
+        
+        self.roundNum += 1
+        self.dealer = self.players[self.roundNum % len(self.players)]
+
+        #embed = self.create_embed()
+        #await self.channel.send(embed=embed)
+    
+    async def createTrick(self):
+        message = f"Current trick no. {self.trickNum}"
+        if(self.cookies.size > 0):
+            self.currentTrick = Trick(len(self.players)+1)
+            message += "\nThis trick has a cookie"
+        else:
+            self.currentTrick = Trick(len(self.players))
+        await self.channel.send(message)
+        
+
+    async def evaluateTrick(self):
+        if(self.currentTrick.size >= len(self.players)):
+            winner: Player = self.players[self.currentTrick.winner]
+
+            message = f"Trick was won by {self.getMemberFromPlayer(winner)}"
+
+            if(self.cookies.size > 0):
+                card: Card = self.cookies.deal()
+                self.currentTrick.addCard(card, len(self.players))
+                message += f"\nCookie was `{card}`"
+            
+            await self.channel.send(message)
+            
+            winner.tricksWon.append(self.currentTrick)
+
+            self.dealer = winner
+            self.trickNum += 1
+
+            await self.createTrick()
+        
+        if(self.trickNum == (52 // len(self.players))):
+            await self.finishRound(self)
+        else:
+            await self.currentTurnMessage()
+    
+    async def currentTurnMessage(self):
+        message = f"Currently {self.currentMember}'s turn"
+        await self.channel.send(message)
+    
+    async def finishRound(self):
+        message = "Round is over"
+        assignPoints: list[int] = [0]*len(self.players)
+        max: int = 2+13*1+5
+        shotTheMoon: Player = Player(0)
+        
+        for player in self.players:
+            playerIndex = self.getPlayerIndex(player)
+            for trick in player.tricksWon:
+                for card in trick.cards:
+                    if(card == Card("J", 0)):
+                        # Jack of Clubs is 2
+                        assignPoints[playerIndex] += 2
+                    if(card.suit == Suit(2)):
+                        # Count all hearts
+                        assignPoints[playerIndex] += 1
+                    if(card == Card("Q", 3)):
+                        # Queen of Spades is 5
+                        assignPoints[playerIndex] += 5
+            player.discardTricks()
+            if(assignPoints[playerIndex] == max):
+                message += f"\n{self.getMemberFromPlayer(player)} shot the moon!\nEveryone else gets {max} points instead"
+                shotTheMoon = player
+
+        for player in self.players:
+            playerIndex = self.getPlayerIndex(player)
+            if(shotTheMoon != Player(0)):
+                if(shotTheMoon == player):
+                    continue
+                player.points += max
+            else:
+                player.points += assignPoints[playerIndex]
+                message += f"\n{self.getMemberFromPlayer(player)} gets {assignPoints[playerIndex]} points and is now at {player.points}"
+        
+        await self.channel.send(message)
+        await self.newRound()
     
     def create_embed(self):
         embed = discord.Embed(title="Hearts lobby", description="Tricks played:\n```None```")
+    
+    @property
+    def currentMember(self):
+        return self.getMemberFromPlayer(self.currentPlayer)
+    
+    def getMemberFromPlayer(self, player: Player):
+        return discord.utils.get(self.bot.get_all_members(), id=player.id)
 
 class Hearts(commands.Cog):
     def __init__(self, bot):
@@ -87,54 +175,57 @@ class Hearts(commands.Cog):
 
     @hearts.command()
     async def create(self, interaction: discord.Interaction):
-        lobby = self.lobbies.get(interaction.channel.id)
+        lobby: HeartsLobby = self.lobbies.get(interaction.channel.id)
         if(lobby != None):
             return await interaction.response.send_message(f"Lobby already exists for this channel, type `/hearts join` instead")
         lobby = HeartsLobby(self.bot, interaction.channel)
         lobby.addPlayer(interaction.user)
-        bluebot = discord.utils.get(self.bot.get_all_members(), id=168463608580276224)
-        lobby.addPlayer(bluebot)
-        bluebotDev = discord.utils.get(self.bot.get_all_members(), id=608011373095419904)
-        lobby.addPlayer(bluebotDev)
+        #bluebot = discord.utils.get(self.bot.get_all_members(), id=168463608580276224)
+        #lobby.addPlayer(bluebot)
+        #bluebotDev = discord.utils.get(self.bot.get_all_members(), id=608011373095419904)
+        #lobby.addPlayer(bluebotDev)
         self.lobbies[interaction.channel.id] = lobby
         await interaction.response.send_message(f"Created lobby\nFor new players, type `/hearts join` to join the lobby")
     
     @hearts.command()
     async def join(self, interaction: discord.Interaction):
-        lobby = self.lobbies.get(interaction.channel.id)
+        lobby: HeartsLobby = self.lobbies.get(interaction.channel.id)
         if(lobby == None):
             return await interaction.response.send_message(f"No lobby exists yet for this channel")
-        if(len(lobby.players) > 4):
-            return await interaction.response.send_message(f"No more room")
-        if(interaction.user.id in lobby.players):
-            return
-        lobby.addPlayer(interaction.user.id)
-        await interaction.response.send_message(f"Succesfully joined lobby in {interaction.channel} ({len(lobby.players)} out of required 4 players)")
+        if(lobby.isActive):
+            return await interaction.response.send_message(f"Lobby is already playing")
+        if(lobby.getPlayer(interaction.user) != None):
+            return await interaction.response.send_message("You've already joined the lobby", ephemeral=True)
+        lobby.addPlayer(interaction.user)
+        await interaction.response.send_message(f"Succesfully joined lobby in {interaction.channel}")
     
     @hearts.command()
     async def addplayer(self, interaction: discord.Interaction, member: discord.Member):
-        lobby = self.lobbies.get(interaction.channel.id)
+        lobby: HeartsLobby = self.lobbies.get(interaction.channel.id)
         if(lobby == None):
             return await interaction.response.send_message(f"No lobby exists yet for this channel")
-        if(len(lobby.players) > 4):
-            return await interaction.response.send_message(f"No more room")
-        if(member.id in lobby.players):
-            return
+        if(lobby.isActive):
+            return await interaction.response.send_message(f"Lobby is already playing")
+        if(lobby.getPlayer(member) != None):
+            return await interaction.response.send_message(f"{member} is already in the lobby")
         lobby.addPlayer(member)
-        await interaction.response.send_message(f"Succesfully added {member} in {interaction.channel} ({len(lobby.players)} out of required 4 players)")
+        await interaction.response.send_message(f"Succesfully added {member} in {interaction.channel}")
 
     @hearts.command()
     async def start(self, interaction: discord.Interaction):
-        lobby = self.lobbies.get(interaction.channel.id)
+        lobby: HeartsLobby = self.lobbies.get(interaction.channel.id)
         if(lobby == None):
             return await interaction.response.send_message(f"No lobby exists yet for this channel")
-        if(len(lobby.players) < 4):
+        if(len(lobby.players) < 3):
             return await interaction.response.send_message(f"Not enough players have joined yet")
-        await lobby.start_game()
+        if(lobby.isActive):
+            return await interaction.response.send_message("Lobby is already active")
+        await interaction.response.defer()
+        await lobby.start_game(interaction)
     
     @hearts.command()
     async def hand(self, interaction: discord.Interaction):
-        lobby = self.lobbies.get(interaction.channel.id)
+        lobby: HeartsLobby = self.lobbies.get(interaction.channel.id)
         if(lobby == None):
             return await interaction.response.send_message(f"No lobby exists yet for this channel")
         player = lobby.getPlayer(interaction.user)
@@ -142,26 +233,52 @@ class Hearts(commands.Cog):
     
     @hearts.command()
     async def play(self, interaction: discord.Interaction, card: str):
-        lobby = self.lobbies.get(interaction.channel.id)
+        lobby: HeartsLobby = self.lobbies.get(interaction.channel.id)
         if(lobby == None):
             return await interaction.response.send_message(f"No lobby exists yet for this channel")
-        hand = lobby.players[interaction.user.id][0]
-        if(card.strip() in str(hand)):
-            await interaction.response.send_message(f"Played {card.strip()}")
+        hand: Hand = lobby.getPlayer(interaction.user).hand
+        playedCard: Card = hand.playCard(card.strip())
+        if(playedCard != InvalidCard):
+            await interaction.response.send_message(f"{interaction.user} played `{card}`")
+
+            lobby.currentTrick.addCard(playedCard, lobby.getPlayerIndex(interaction.user))
+            await lobby.evaluateTrick()
         else:
             await interaction.response.send_message(f"Card not found in hand")
     
     @play.autocomplete("card")
-    async def play_autocomplete(self, interaction: discord.Interaction, current: str) -> typing.List[app_commands.Choice[str]]:
-        choices = list()
+    async def play_autocomplete(self, interaction: discord.Interaction, current: str) -> List[app_commands.Choice[str]]:
+        choices = []
         lobby: HeartsLobby = self.lobbies.get(interaction.channel.id)
         if(lobby == None):
-            return choices
+            return []
+
+        current = current.replace("clubs", "♣️")
+        current = current.replace("diamonds", "♦️")
+        current = current.replace("hearts", "♥")
+        current = current.replace("spades", "♠")
+        
         player: Player = lobby.getPlayer(interaction.user)
+        playerIndex: int = lobby.getPlayerIndex(interaction.user)
+        dealer: Player = lobby.dealer
+        dealerIndex: int = lobby.players.index(dealer)
+
+        trick: Trick = lobby.currentTrick
+        #if(trick.getCard(playerIndex) != InvalidCard):
+            #return []
+
+        currentPlayer: Player = lobby.players[(dealerIndex + trick.size) % len(lobby.players)]
+        if(player != currentPlayer):
+            return []
+
         hand: Hand = player.hand
+        if(trick.suit != Suit(-1)):
+            suitHand: Hand = hand.fromSuit(trick.suit)
+            if(len(suitHand) > 0):
+                hand = suitHand
         for card in hand:
             if current.lower() in str(card).lower():
-                choices.append(app_commands.Choice(name=card, value=card))
+                choices.append(app_commands.Choice(name=str(card), value=str(card)))
         return choices
 
 async def setup(bot):

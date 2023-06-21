@@ -81,10 +81,55 @@ class Rank:
     def __str__(self):
         return self.string
 
+
+clubs = 0
+diamonds = 1
+hearts = 2
+spades = 3
+suits = ["♣️", "♦️", "♥", "♠"]
+
 class Card:
     def __init__(self, rank: Rank, suit: Suit):
         self.rank: Rank = Rank(rank)
         self.suit: Suit = Suit(suit)
+    
+    @classmethod
+    def fromString(cls, card: str):
+        if len(card) == 0:
+            return None
+        
+        offset = 1 if card[-1] == chr(65039) else 0
+
+        suit = card[len(card)-1-offset:] # get the suit from the string
+
+        try:
+            suitIden = suits.index(suit)
+        except:
+            return None
+
+        cardRank = card[0:len(card)-1-offset] # get rank from string
+
+        try:
+            cardRank = cardRank.upper()
+        except AttributeError:
+            pass
+
+        # convert rank to int
+        if cardRank == "J":
+            cardRank = 11
+        elif cardRank == "Q":
+            cardRank = 12
+        elif cardRank == "K":
+            cardRank = 13
+        elif cardRank == "A":
+            cardRank = 14
+        else:
+            try:
+                cardRank = int(cardRank)
+            except ValueError:
+                return None
+
+        return cls(cardRank, suitIden)
 
     def __lt__(self, other):
         return (self.rank < other.rank or (self.rank == other.rank and self.suit < other.suit))
@@ -112,3 +157,5 @@ class Card:
 
     def __str__(self):
         return self.rank.__str__() + self.suit.__str__()
+
+InvalidCard = Card(2, -1)

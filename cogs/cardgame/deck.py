@@ -8,10 +8,13 @@ maxRank = 15
 
 class Deck:
     def __init__(self):
-        self.deck = []
+        self.deck: list[Card] = []
         for suit in range(0, numSuits):
             for rank in range(minRank, maxRank):
                 self.deck.append(Card(rank, suit))
+    
+    def clear(self):
+        self.deck: list[Card] = []
 
     def __str__(self) -> str:
         deckStr = ''
@@ -32,5 +35,8 @@ class Deck:
     def size(self) -> int:
         return len(self.deck)
 
-    def addCards(self, cards):
+    def addCard(self, card: Card):
+        self.deck.append(card)
+
+    def addCards(self, cards: list[Card]) -> None:
         self.deck += cards

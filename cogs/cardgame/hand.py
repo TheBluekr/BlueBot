@@ -1,5 +1,5 @@
 from random import randint
-from .card import Card, Suit, Rank
+from .card import Card, InvalidCard, Suit, Rank
 from typing import Union
 
 clubs = 0
@@ -39,10 +39,15 @@ class Hand:
     def hand(self) -> list[list[Card]]:
         # create hand of cards split up by suit
         return [self.clubs, self.diamonds, self.hearts, self.spades]
+    
+    def fromSuit(self, suit: Suit) -> list[Card]:
+        if(suit == Suit(-1)):
+            return []
+        return self.hand[suit.iden]
 
     def strToCard(self, card: str) -> Card:
         if len(card) == 0:
-            return None
+            return InvalidCard
         
         offset = 1 if card[-1] == chr(65039) else 0
 
@@ -51,7 +56,7 @@ class Hand:
         try:
             suitIden = suits.index(suit)
         except:
-            return None
+            return InvalidCard
 
         cardRank = card[0:len(card)-1-offset] # get rank from string
 
@@ -73,7 +78,7 @@ class Hand:
             try:
                 cardRank = int(cardRank)
             except ValueError:
-                return None
+                return InvalidCard
 
         return Card(cardRank, suitIden)
 
@@ -93,7 +98,7 @@ class Hand:
         if(self.containsCard(card)):
             self.removeCard(card)
             return card
-        return None
+        return InvalidCard
 
     def removeCard(self, card: Union[Card, str]) -> None:
         if(type(card) == str):
@@ -108,7 +113,7 @@ class Hand:
         handStr = ""
         for suit in self.hand:
             for card in suit:
-                handStr += card.__str__() + " "
+                handStr += str(card) + " "
         return handStr
     
     def __iter__(self):

@@ -8,7 +8,7 @@ class Player:
     def __init__(self, id: int):
         self.id: int = id
         self.hand: Hand = Hand()
-        self.tricksWon: list = []
+        self.tricksWon: list[Trick] = []
         self.points: int = 0
 
     def addCard(self, card: Card) -> None:
