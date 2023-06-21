@@ -251,7 +251,10 @@ class Hearts(commands.Cog):
             index = (startOffset+i) % len(lobby.players)
             player: Player = lobby.getPlayerFromIndex(index)
             member: discord.Member = lobby.getMemberFromPlayer(player)
-            message += f"{member}: {lobby.currentTrick.getCard(index)}\n"
+            card: Card = lobby.currentTrick.getCard(index)
+            if(card.suit.iden == -1):
+                card = "None"
+            message += f"{member}: {card}\n"
         message += "```"
         await interaction.response.send_message(message)
 
