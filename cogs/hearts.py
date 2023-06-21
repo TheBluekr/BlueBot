@@ -252,8 +252,6 @@ class Hearts(commands.Cog):
             player: Player = lobby.getPlayerFromIndex(index)
             member: discord.Member = lobby.getMemberFromPlayer(player)
             card: Card = lobby.currentTrick.getCard(index)
-            if(card.suit.iden == -1):
-                card = "None"
             message += f"{member}: {card}\n"
         message += "```"
         await interaction.response.send_message(message)

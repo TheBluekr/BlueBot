@@ -156,6 +156,8 @@ class Card:
         return self.suit
 
     def __str__(self):
+        if(self.suit.iden == -1):
+            return "None"
         return self.rank.__str__() + self.suit.__str__()
 
 InvalidCard = Card(2, -1)
