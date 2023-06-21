@@ -102,7 +102,7 @@ class HeartsLobby(CardGame):
             
             winner.tricksWon.append(self.currentTrick)
 
-            self.dealer = winner
+            self.trickWinner = winner
             self.trickNum += 1
 
             await self.createTrick()
@@ -162,6 +162,13 @@ class HeartsLobby(CardGame):
     
     def getMemberFromPlayer(self, player: Player):
         return discord.utils.get(self.bot.get_all_members(), id=player.id)
+    
+    @property
+    def startingPlayer(self) -> Player:
+        index = self.getPlayerIndex(self.trickWinner)
+        if(index == None):
+            index = 0
+        return self.players[index]
 
 class Hearts(commands.Cog):
     def __init__(self, bot):
@@ -233,6 +240,21 @@ class Hearts(commands.Cog):
         player = lobby.getPlayer(interaction.user)
         await interaction.response.send_message(f"```Player: {interaction.user}\nHand size: {player.hand.size()}\nHand: {str(player.hand)}```")
     
+    @hearts.command()
+    async def trick(self, interaction: discord.Interaction):
+        lobby: HeartsLobby = self.lobbies.get(interaction.channel.id)
+        if(lobby == None):
+            return await interaction.response.send_message(f"No lobby exists yet for this channel")
+        message = "Cards in trick currently:```"
+        startOffset = lobby.getPlayerIndex(lobby.startingPlayer)
+        for i in range(len(lobby.players)):
+            index = (startOffset+i) % len(lobby.players)
+            player: Player = lobby.getPlayerFromIndex(index)
+            member: discord.Member = lobby.getMemberFromPlayer(player)
+            message += f"{member}: {lobby.currentTrick.getCard(index)}\n"
+        message += "```"
+        await interaction.response.send_message(message)
+
     @hearts.command()
     async def play(self, interaction: discord.Interaction, card: str):
         lobby: HeartsLobby = self.lobbies.get(interaction.channel.id)

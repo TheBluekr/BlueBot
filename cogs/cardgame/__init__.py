@@ -35,7 +35,10 @@ class CardGame:
         return None
 
     def getPlayerFromIndex(self, index: int) -> Player:
-        return self.players[index]
+        try:
+            return self.players[index]
+        except IndexError:
+            return None
 
     def handleScoring(self):
         raise NotImplementedError
@@ -58,5 +61,7 @@ class CardGame:
 
     @property
     def currentPlayer(self) -> Player:
-        dealerIndex = self.players.index(self.dealer)
-        return self.players[(dealerIndex + self.currentTrick.size) % len(self.players)]
+        index = self.getPlayerIndex(self.trickWinner)
+        if(index == None):
+            index = 0
+        return self.players[(index + self.currentTrick.size) % len(self.players)]

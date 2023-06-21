@@ -116,7 +116,7 @@ class Bluecorp(commands.Cog):
                 reply = await interaction.channel.fetch_message(int(replyto))
                 await interaction.channel.send(message, reference=reply)
             else:
-                await interaction.channel.send(message, reference=reply)
+                await interaction.channel.send(message)
         except discord.NotFound:
             await interaction.channel.send(message)
 

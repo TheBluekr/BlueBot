@@ -40,3 +40,7 @@ class Trick:
             if card.rank > self.highest:
                 self.highest = card.rank
                 self.winner = index
+
+    def __iter__(self):
+        for card in self.trick:
+            yield card
