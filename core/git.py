@@ -61,15 +61,15 @@ class Git:
                                 await channel.send(embed=errorEmbed)
                 
                 if(file.change_type == "A"):
-                    embed.description += f"[Added] {file.b_path}"
+                    embed.description += f"[Added] {file.b_path}\n"
                 elif(file.change_type == "D"):
-                    embed.description += f"[Deleted] {file.a_path}"
+                    embed.description += f"[Deleted] {file.a_path}\n"
                 elif(file.change_type == "R"):
-                    embed.description += f"[Renamed] {file.a_path} -> {file.b_path}"
+                    embed.description += f"[Renamed] {file.a_path} -> {file.b_path}\n"
                 elif(file.change_type == "M"):
-                    embed.description += f"[Modified] {file.a_path}"
+                    embed.description += f"[Modified] {file.a_path}\n"
                 else:
-                    embed.description += f"[Unknown] {diff.change_type} - {file.a_path} - {file.b_path}"
+                    embed.description += f"[Unknown] {diff.change_type} - {file.a_path} - {file.b_path}\n"
             
             embed.description += "```"
 
