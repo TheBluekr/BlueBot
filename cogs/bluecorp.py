@@ -100,12 +100,12 @@ class Bluecorp(commands.Cog):
         await interaction.response.send_message(embed=embed)
     
     @app_commands.command()
-    @app_commands.checks.has_permissions(manage_messages=True)
-    @app_commands.guild_only()
-    async def purge(self, interaction: discord.Interaction, limit: int=100):
-        await interaction.channel.purge(limit=limit)
-        await interaction.response.send_message(f"Purged {limit} messages", ephemeral=True)
-
+    @app_commands.guilds(discord.Object(138365437791567872))
+    @app_commands.check(check_owner)
+    async def restart(self, interaction: discord.Interaction):
+        await interaction.response.send_message(f"Rebooting bot...")
+        await self.bot.shutdown()
+    
     @app_commands.command()
     @app_commands.guilds(discord.Object(138365437791567872))
     @app_commands.check(check_owner)

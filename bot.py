@@ -51,6 +51,10 @@ class Bot(commands.Bot):
         
         self.logger.info("Finished loading all cogs")
         return await super().setup_hook()
+    
+    async def shutdown(self):
+        self.db.close()
+        self.close()
 
     @commands.Cog.listener()
     async def on_ready(self):
@@ -65,7 +69,7 @@ class Bot(commands.Bot):
     
     @commands.Cog.listener()
     async def on_disconnect(self):
-        self.db.close()
+        await self.shutdown()
 
 bot = Bot()
 bot.run(os.getenv("TOKEN"), log_handler=None)

@@ -132,6 +132,7 @@ class Buttons(commands.Cog):
     async def clearsync(self, ctx: commands.Context):
         ctx.bot.tree.clear_commands(guild=None)
         await ctx.bot.tree.sync(guild=None)
+        await ctx.send(f"Cleared global command tree")
     
     @commands.hybrid_command(description="Returns latency of bot")
     async def ping(self, ctx):
