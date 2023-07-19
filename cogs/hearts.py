@@ -102,13 +102,13 @@ class HeartsLobby(CardGame):
             
             winner.tricksWon.append(self.currentTrick)
 
-            self.trickWinner = winner
-            self.trickNum += 1
+            if(winner.hand.size > 0):
+                self.trickWinner = winner
+                self.trickNum += 1
 
-            await self.createTrick()
-        
-        if(self.trickNum == (52 // len(self.players))):
-            await self.finishRound(self)
+                await self.createTrick()
+            else:
+                await self.finishRound(self)
         else:
             await self.currentTurnMessage()
     
@@ -253,7 +253,7 @@ class Hearts(commands.Cog):
             member: discord.Member = lobby.getMemberFromPlayer(player)
             card: Card = lobby.currentTrick.getCard(index)
             message += f"{member}: {card}\n"
-        message += "```"
+        message += f"Current suit: {lobby.currentTrick.suit}\nTrump: {lobby.currentTrick.trump}```"
         await interaction.response.send_message(message)
 
     @hearts.command()

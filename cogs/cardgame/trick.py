@@ -28,7 +28,7 @@ class Trick:
         self.suit = card.suit
 
     def addCard(self, card: Card, index: int):
-        if self.cards == 0: # if this is the first card added, set the trick suit
+        if self.size == 0: # if this is the first card added, set the trick suit
             self.setTrickSuit(card)
             self.winner = index
         if card.suit == self.trump: # trump color always wins over suit
