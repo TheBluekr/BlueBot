@@ -4,34 +4,41 @@ from .player import Player
 from .trick import Trick
 
 import discord
+from typing import Union
 
 class CardGame:
     def __init__(self):
-        self.deck = Deck()
+        self.deck: Deck = Deck()
         self.deck.shuffle()
         
-        self.roundNum = -1
-        self.trickNum = 0
-        self.dealer = 0
-        self.currentTrick = Trick()
-        self.trickWinner = -1
+        self.roundNum: int = -1
+        self.trickNum: int = 1
+        self.dealer: Player = Player(0)
+        self.currentTrick: Trick = Trick()
+        self.trickWinner: Player = self.dealer
 
-        self.players = []
+        self.players: list[Player] = []
     
-    def addPlayer(self, player: discord.Member):
+    def addPlayer(self, player: discord.Member) -> None:
         self.players.append(Player(player.id))
     
-    def getPlayer(self, player: discord.Member):
+    def getPlayer(self, player: discord.Member) -> Player|None:
         for p in self.players:
             if(p.id == player.id):
                 return p
         return None
     
-    def getPlayerIndex(self, player: discord.Member):
+    def getPlayerIndex(self, player: discord.Member) -> int|None:
         for p in self.players:
             if(p.id == player.id):
                 return self.players.index(p)
         return None
+
+    def getPlayerFromIndex(self, index: int) -> Player:
+        try:
+            return self.players[index]
+        except IndexError:
+            return None
 
     def handleScoring(self):
         raise NotImplementedError
@@ -49,5 +56,12 @@ class CardGame:
         raise NotImplementedError
 
     # show cards played in current trick
-    def printCurrentTrick(self):
+    def returnCurrentTrick(self):
         raise NotImplementedError
+
+    @property
+    def currentPlayer(self) -> Player:
+        index = self.getPlayerIndex(self.trickWinner)
+        if(index == None):
+            index = 0
+        return self.players[(index + self.currentTrick.size) % len(self.players)]

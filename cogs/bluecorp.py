@@ -102,8 +102,9 @@ class Bluecorp(commands.Cog):
     @app_commands.command()
     @app_commands.checks.has_permissions(manage_messages=True)
     @app_commands.guild_only()
-    async def purge(self, ctx, limit: int=100):
-        await ctx.channel.purge(limit=limit)
+    async def purge(self, interaction: discord.Interaction, limit: int=100):
+        await interaction.channel.purge(limit=limit)
+        await interaction.response.send_message(f"Purged {limit} messages", ephemeral=True)
 
     @app_commands.command()
     @app_commands.guilds(discord.Object(138365437791567872))
@@ -116,7 +117,7 @@ class Bluecorp(commands.Cog):
                 reply = await interaction.channel.fetch_message(int(replyto))
                 await interaction.channel.send(message, reference=reply)
             else:
-                await interaction.channel.send(message, reference=reply)
+                await interaction.channel.send(message)
         except discord.NotFound:
             await interaction.channel.send(message)
 

@@ -1,5 +1,6 @@
 from random import randint
-from .card import Card, Suit
+from .card import Card, InvalidCard, Suit, Rank
+from typing import Union
 
 clubs = 0
 diamonds = 1
@@ -9,19 +10,15 @@ suits = ["♣️", "♦️", "♥", "♠"]
 
 class Hand:
     def __init__(self):
+        self.clubs: list[Card] = []
+        self.diamonds: list[Card] = []
+        self.hearts: list[Card] = []
+        self.spades: list[Card] = []
 
-        self.clubs = []
-        self.diamonds = []
-        self.hearts = []
-        self.spades = []
-
-        # create hand of cards split up by suit
-        self.hand = [self.clubs, self.diamonds, self.hearts, self.spades]
-
-    def size(self):
+    def size(self) -> int:
         return len(self.clubs) + len(self.diamonds) + len(self.hearts) + len(self.spades)
 
-    def addCard(self, card):
+    def addCard(self, card: Card) -> None:
         if(type(card) == str):
             card = self.strToCard(card)
 
@@ -38,12 +35,19 @@ class Hand:
             self.spades.append(card)
             self.spades.sort()
 
-    def updateHand(self):
-        self.hand = [self.clubs, self.diamonds, self.hearts, self.spades]
+    @property
+    def hand(self) -> list[list[Card]]:
+        # create hand of cards split up by suit
+        return [self.clubs, self.diamonds, self.hearts, self.spades]
+    
+    def fromSuit(self, suit: Suit) -> list[Card]:
+        if(suit == Suit(-1)):
+            return []
+        return self.hand[suit.iden]
 
-    def strToCard(self, card):
+    def strToCard(self, card: str) -> Card:
         if len(card) == 0:
-            return None
+            return InvalidCard
         
         offset = 1 if card[-1] == chr(65039) else 0
 
@@ -52,7 +56,7 @@ class Hand:
         try:
             suitIden = suits.index(suit)
         except:
-            return None
+            return InvalidCard
 
         cardRank = card[0:len(card)-1-offset] # get rank from string
 
@@ -74,35 +78,29 @@ class Hand:
             try:
                 cardRank = int(cardRank)
             except ValueError:
-                return None
+                return InvalidCard
 
         return Card(cardRank, suitIden)
 
-    def containsCard(self, cardRank, suitIden):
-        for card in self.hand[suitIden]:
-            if card.rank.rank == cardRank:
-                cardToPlay = card
+    def containsCard(self, card: Union[Card, str]) -> bool:
+        if(type(card) == str):
+            card: Card = self.strToCard(card)
 
-                # remove cardToPlay from hand
-                self.hand[suitIden].remove(card)
+        for c in self.hand[card.suit.iden]:
+            if c.rank.rank == card.rank.rank:
+                return True
+        return False
 
-                # update hand representation
-                self.updateHand()
-                return cardToPlay
-        return None
+    def playCard(self, card: Union[Card, str]) -> Card:
+        if(type(card) == str):
+            card: Card = self.strToCard(card)
 
-    def playCard(self, card):
-        card = self.strToCard(card)
+        if(self.containsCard(card)):
+            self.removeCard(card)
+            return card
+        return InvalidCard
 
-        if card is None:
-            return None
-        else:
-            cardRank, suitIden = card.rank, card.suit.iden
-
-        # see if player has that card in hand
-        return self.containsCard(cardRank, suitIden)
-
-    def removeCard(self, card):
+    def removeCard(self, card: Union[Card, str]) -> None:
         if(type(card) == str):
             card = self.strToCard(card)
         
@@ -110,13 +108,12 @@ class Hand:
         for c in self.hand[suitId]:
             if c == card:
                 self.hand[card.suit.iden].remove(c)
-                self.updateHand()
 
     def __str__(self):
         handStr = ""
         for suit in self.hand:
             for card in suit:
-                handStr += card.__str__() + " "
+                handStr += str(card) + " "
         return handStr
     
     def __iter__(self):

@@ -33,12 +33,15 @@ class Buttons(commands.Cog):
                 customid = int(data[1])
                 if(data[0] == "role"):
                     role = interaction.guild.get_role(customid)
-                    if(interaction.user.get_role(customid) != role):
-                        await interaction.user.add_roles(role)
+                    if(role):
+                        if(interaction.user.get_role(customid) != role):
+                            await interaction.user.add_roles(role)
+                        else:
+                            await interaction.user.remove_roles(role)
                 if(data[0] == "channel"):
                     channel = interaction.guild.get_channel(customid)
                     perms = channel.overwrites_for(interaction.user)
-                    perms.view_channel = True
+                    perms.view_channel = not perms.view_channel
                     await channel.set_permissions(interaction.user, overwrite=perms)
                 await interaction.response.defer()
 
