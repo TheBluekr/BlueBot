@@ -77,4 +77,4 @@ class Git:
                 await channel.send(embed=embed)
             
             if(bShutdown):
-                await self.bot.close()
+                await self.bot.shutdown()

@@ -102,6 +102,13 @@ class Bluecorp(commands.Cog):
     @app_commands.command()
     @app_commands.guilds(discord.Object(138365437791567872))
     @app_commands.check(check_owner)
+    async def restart(self, interaction: discord.Interaction):
+        await interaction.response.send_message(f"Rebooting bot...")
+        await self.bot.shutdown()
+    
+    @app_commands.command()
+    @app_commands.guilds(discord.Object(138365437791567872))
+    @app_commands.check(check_owner)
     async def send(self, interaction: discord.Interaction, message: str, replyto: str = None):
         #await interaction.response.defer(ephemeral=False, thinking=False)
         await interaction.response.send_message(f"Sending message:\n```{message}```", ephemeral=True)
