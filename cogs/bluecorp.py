@@ -123,7 +123,7 @@ class Bluecorp(commands.Cog):
 
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
-        if(message.channel.id != 957048975809183774 and message.channel.id != 1050072272221773856): # nsfw-content
+        if(message.channel.id != 957048975809183774 and message.channel.id != 1050072272221773856 and message.channel.id != 1131896468261842954): # nsfw-content
             return
         if(re.findall('http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\), ]|(?:%[0-9a-fA-F][0-9a-fA-F]))+', message.content) != [] or message.attachments != []):
             await message.create_thread(name="Comments", auto_archive_duration=10080, reason="Automatic creation of threads")
