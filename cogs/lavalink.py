@@ -120,7 +120,7 @@ class Lavalink(commands.Cog):
         vc.autoplay = True
     
     @search.autocomplete("search")
-    async def add_autocomplete(self, interaction: discord.Interaction, current: str) -> typing.List[app_commands.Choice[str]]:
+    async def search_autocomplete(self, interaction: discord.Interaction, current: str) -> typing.List[app_commands.Choice[str]]:
         tracks: list[wavelink.YouTubeTrack] = await wavelink.YouTubeTrack.search(current)
         choices = list()
 
@@ -129,93 +129,88 @@ class Lavalink(commands.Cog):
 
         return choices
     
+    def check_voiceclient(self, interaction: discord.Interaction):
+        if not interaction.guild.voice_client:
+            return False
+        vc: wavelink.Player = interaction.guild.voice_client
+        if(vc.queue.is_empty and vc.current == None):
+            return False
+    
     @app_commands.guild_only()
     @app_commands.command(description="Pause the current player")
-    async def pause(self, ctx: commands.Context):
+    @app_commands.check(check_voiceclient)
+    async def pause(self, interaction: discord.Interaction):
         """Pauses the music player.
         """
-        if not ctx.voice_client:
-            return
-        vc: wavelink.Player = ctx.voice_client
-        if(vc.source == None):
-            return
-        if(vc.is_playing()):
-            embed = discord.Embed(description=f"Paused **[{vc.track.title}](https://www.youtube.com/watch?v={vc.track.identifier} '{vc.track.identifier}')**")
-            embed.color = self.embedColors.get(ctx.me.id, ctx.me.color)
-            await ctx.channel.send(embed=embed)
-            await vc.pause()
+        vc: wavelink.Player = interaction.guild.voice_client
+        
+        await vc.pause()
+        embed = self.embed.create_embed(interaction.user)
+        embed.description = f"Paused **[{vc.track.title}](https://www.youtube.com/watch?v={vc.track.identifier} '{vc.track.identifier}')**"
+        await interaction.response.send_message(embed=embed)
     
     @app_commands.guild_only()
     @app_commands.command(description="Resumes the current player")
-    async def resume(self, ctx: commands.Context):
+    @app_commands.check(check_voiceclient)
+    async def resume(self, interaction: discord.Interaction):
         """Unpauses the music player.
         """
-        if(not ctx.voice_client):
-            return
-        vc: wavelink.Player = ctx.voice_client
-        if(vc.source == None):
-            return
-        if(vc.is_playing()):
-            embed = discord.Embed(description=f"Resumed **[{vc.track.title}](https://www.youtube.com/watch?v={vc.track.identifier} '{vc.track.identifier}')**")
-            embed.color = self.embedColors.get(ctx.me.id, ctx.me.color)
-            await ctx.channel.send(embed=embed)
-            await vc.resume()
+        vc: wavelink.Player = interaction.guild.voice_client
+
+        await vc.resume()
+        embed = self.embed.create_embed(interaction.user)
+        embed.description = f"Resumed **[{vc.track.title}](https://www.youtube.com/watch?v={vc.track.identifier} '{vc.track.identifier}')**")
+        await interaction.response.send_message(embed=embed)
     
     @app_commands.guild_only()
     @app_commands.command(description="Stops the current player and disconnects from voice")
-    async def stop(self, ctx: commands.Context):
+    async def stop(self, interaction: discord.Interaction):
         """Stops playing music and disconnects the bot from the voice channel."""
-        if(not ctx.voice_client):
-            return
-        vc: wavelink.Player = ctx.voice_client
-        if(vc.source == None):
-            return
-        if(vc.is_playing()):
-            embed = discord.Embed(description=f"Disconnecting")
-            embed.color = self.embedColors.get(ctx.me.id, ctx.me.color)
-            await ctx.channel.send(embed=embed)
-            self.wavequeue[ctx.guild].clear()
-            await vc.stop()
-            await vc.disconnect()
+        embed = self.embed.create_embed(interaction.user)
+
+        if not interaction.guild.voice_client:
+            embed.description = "Not connected to voice"
+            return await interaction.response.send_message(embed=embed)
+        
+        vc: wavelink.Player = interaction.guild.voice_client
+        
+        vc.queue.clear()
+        await vc.stop()
+        await vc.disconnect()
+
+        embed.description = "Disconnecting"
+        await interaction.response.send_message(embed=embed)
 
     @app_commands.guild_only()
     @app_commands.command(description="Skips the current song")
-    async def skip(self, ctx: commands.Context):
+    @app_commands.check(check_voiceclient)
+    async def skip(self, interaction: discord.Interaction):
         """Skips the current playing song.
         """
-        if(not ctx.voice_client):
-            return
-        vc: wavelink.Player = ctx.voice_client
-        if(vc.source == None):
-            return
-        curr = self.wavequeue[vc.guild].get()
-        curr.loop = False
-        self.wavequeue[vc.guild].put_at_front(curr)
-        await vc.stop()
+        vc: wavelink.Player = interaction.guild.voice_client
+
+        await vc.stop(force=True)
     
     @commands.guild_only()
     @app_commands.describe(volume="Volume level (Default: 1.0)")
     @app_commands.command(description="Changes the volume of the player")
-    async def volume(self, ctx: commands.Context, volume: float=1.0):
+    @app_commands.check(check_voiceclient)
+    async def volume(self, interaction: discord.Interaction, volume: float=1.0):
         """Set the volume for this guild. (Default 1.0)"""
-        if(not ctx.voice_client):
-            return
-        vc: wavelink.Player = ctx.voice_client
-        if(vc.source == None):
-            return
-        vc.track.loop = False
+        vc: wavelink.Player = interaction.guild.voice_client
         await vc.set_volume(volume)
+
+        embed = self.embed.create_embed(interaction.user)
+        embed.description = f"Set volume to {volume}"
+        await interaction.response.send_message(embed=embed)
     
     @commands.guild_only()
     @app_commands.describe(position="Time to set to (in seconds)")
     @app_commands.command(description="Sets the current position in the track to the specified time")
-    async def set(self, ctx: commands.Context, position: float):
+    @app_commands.check(check_voiceclient)
+    async def set(self, interaction: discord.Interaction, position: float):
         """Sets the current playback to the specified time (in seconds)"""
-        if(not ctx.voice_client):
-            return
-        vc: wavelink.Player = ctx.voice_client
-        if(vc.source == None):
-            return
+        vc: wavelink.Player = interaction.guild.voice_client
         await vc.seek(position*1000)
     
     def process_sponsorblock(self, sponsorblock_segments: list):
