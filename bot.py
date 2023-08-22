@@ -54,7 +54,7 @@ class Bot(commands.Bot):
     
     async def shutdown(self):
         self.db.close()
-        self.close()
+        await self.close()
 
     @commands.Cog.listener()
     async def on_ready(self):
