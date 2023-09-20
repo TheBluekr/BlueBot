@@ -63,7 +63,7 @@ class Buttons(commands.Cog):
     @app_commands.choices(type=[app_commands.Choice(name="Role", value="role"),
                                 app_commands.Choice(name="Channel", value="channel"),
                                 app_commands.Choice(name="URL", value="url")])
-    async def add(self, interaction: discord.Interaction, message: str, label: str, style: app_commands.Choice[str], type: app_commands.Choice[str], value: str, emoji: str=None):
+    async def add(self, interaction: discord.Interaction, message: str, style: app_commands.Choice[str], type: app_commands.Choice[str], value: str, label: str=None, emoji: str=None):
         message = await interaction.channel.fetch_message(int(message))
         view = discord.ui.View.from_message(message)
         style = getattr(discord.ButtonStyle, style.value)
@@ -107,8 +107,8 @@ class Buttons(commands.Cog):
     
     @button.command()
     @app_commands.checks.has_permissions(manage_guild=True)
-    async def clear(self, interaction: discord.Interaction, message: int):
-        message = await interaction.channel.fetch_message(message)
+    async def clear(self, interaction: discord.Interaction, message: str):
+        message = await interaction.channel.fetch_message(int(message))
         await message.edit(view=None)
         embed = self.embed.create_embed(interaction.user)
         embed.description = "```Cleared buttons```"
