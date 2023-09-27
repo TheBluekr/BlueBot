@@ -12,7 +12,7 @@ logger = logging.getLogger(__cogname__)
 
 class Bluecorp(commands.Cog):
     def __init__(self, bot):
-        self.bot = bot
+        self.bot: discord.Client = bot
         self.logger = logger
         self.logger.info(f"Loaded cog {__cogname__}")
         self.embed = self.bot.embed
@@ -120,6 +120,13 @@ class Bluecorp(commands.Cog):
                 await interaction.channel.send(message)
         except discord.NotFound:
             await interaction.channel.send(message)
+    
+    @commands.command()
+    @commands.guild_only()
+    async def sendraw(self, ctx: commands.Context, message: str):
+        if(ctx.author.id != self.bot.application.owner.id):
+            return
+        await ctx.send(message)
 
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
