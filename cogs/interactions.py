@@ -28,7 +28,6 @@ class Buttons(commands.Cog):
     async def on_interaction(self, interaction: discord.Interaction):
         if(interaction.type == discord.InteractionType.component):
             if(interaction.data["component_type"] == 2): # Button
-                self.logger.info(interaction.data["component_type"])
                 data = interaction.data["custom_id"].split(".")
                 customid = int(data[1])
                 if(data[0] == "role"):
