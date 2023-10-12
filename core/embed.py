@@ -1,7 +1,6 @@
 import logging
 import discord
-import json
-import os
+import datetime
 
 from typing import Union
 
@@ -64,4 +63,5 @@ class EmbedColor:
         if(user != None):
             embed.color = self.get_color(user)
             embed.set_author(name=user, icon_url=user.avatar.url)
+        embed.timestamp = datetime.datetime.now()
         return embed

@@ -10,7 +10,7 @@ from discord import app_commands
 from discord.ext import commands
 
 import sqlalchemy
-from sqlalchemy import Column, String, BigInteger
+from sqlalchemy import Column, BigInteger
 from sqlalchemy.ext.declarative import declarative_base
 
 Base = declarative_base()

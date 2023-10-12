@@ -13,7 +13,7 @@ class CogManagement(commands.Cog):
 
     @commands.command()
     @commands.is_owner()
-    async def restartcog(self, ctx): # Restart ALL cogs.
+    async def restartcogs(self, ctx: commands.Context): # Restart ALL cogs.
         async with ctx.typing():
             embed = discord.Embed(
                 title="Reloading all cogs",
@@ -42,7 +42,7 @@ class CogManagement(commands.Cog):
 
     @commands.command(aliases=['cog'], name="reloadcog")
     @commands.is_owner()
-    async def reloadcog(self, ctx, *, cogname): # Restart a single cog file.
+    async def reloadcog(self, ctx: commands.Context, *, cogname: str): # Restart a single cog file.
         async with ctx.typing():
             embed = discord.Embed(
                 title=f"Reloading {cogname}",
@@ -68,7 +68,7 @@ class CogManagement(commands.Cog):
 
     @commands.command()
     @commands.is_owner()
-    async def stopcog(self, ctx, *, cogname): # Unload/Stop a single cog file.
+    async def stopcog(self, ctx: commands.Context, *, cogname: str): # Unload/Stop a single cog file.
         async with ctx.typing():
             embed = discord.Embed(
                 title=f"Stopping {cogname}",
@@ -93,7 +93,7 @@ class CogManagement(commands.Cog):
 
     @commands.command()
     @commands.is_owner()
-    async def load(self, ctx, *, cogname): # Load/Start a single cog file.
+    async def load(self, ctx: commands.Context, *, cogname: str): # Load/Start a single cog file.
         async with ctx.typing():
             embed = discord.Embed(
                 title=f"Starting {cogname}",
