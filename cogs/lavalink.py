@@ -113,13 +113,15 @@ class Lavalink(commands.Cog):
 
                 embed.description = f"**Added**:\n**[{track.title}](https://www.youtube.com/watch?v={track.identifier} '{track.identifier}')**"
                 embed.set_footer(text=f"Requested by: {track.requester}", icon_url=track.requester.avatar.url)
-                await vc.channel.send(embed=embed)
+                await interaction.response.send_message(embed=embed)
 
                 if(vc.is_playing()):
                     await vc.queue.put_wait(track)
                 else:
                     await vc.play(track)
-
+        else:
+            embed.description = "Started playing"
+            await interaction.response.send_message(embed=embed)
         vc.autoplay = True
 
     @app_commands.guild_only()
@@ -144,7 +146,7 @@ class Lavalink(commands.Cog):
 
         embed.description = f"**Added**:\n**[{track.title}](https://www.youtube.com/watch?v={track.identifier} '{track.identifier}')**"
         embed.set_footer(text=f"Requested by: {track.requester}", icon_url=track.requester.avatar.url)
-        await vc.channel.send(embed=embed)
+        await interaction.response.send_message(embed=embed)
 
         if(vc.is_playing()):
             await vc.queue.put_wait(track)
@@ -297,6 +299,7 @@ class Lavalink(commands.Cog):
         """Toggle whether the current song should loop"""
         vc: wavelink.Player = interaction.guild.voice_client
         vc.queue.loop = loop
+        await interaction.response.send_message(f"Set loop state to {vc.queue.loop}")
     
     def process_sponsorblock(self, sponsorblock_segments: list):
         import operator
