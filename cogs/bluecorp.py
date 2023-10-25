@@ -3,12 +3,9 @@ import discord
 import ast
 import re
 import os
-import os
 
 from discord import app_commands
 from discord.ext import commands, tasks
-
-import yaml
 
 import yaml
 
