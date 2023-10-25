@@ -159,7 +159,7 @@ class Lavalink(commands.Cog):
     @check_voice_user()
     @music.command()
     async def search(self, interaction: discord.Interaction, query: str):
-        tracks = await wavelink.YouTubeTrack.search(query)
+        tracks = await wavelink.NodePool.get_tracks(query, wavelink.YouTubeTrack)
 
         embed = self.embed.create_embed(interaction.user)
 

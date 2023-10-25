@@ -2,9 +2,12 @@ import logging
 import discord
 import ast
 import re
+import os
 
 from discord import app_commands
 from discord.ext import commands, tasks
+
+import yaml
 
 __author__ = "TheBluekr#2702"
 __cogname__ = "bluebot.cogs.bluecorp"
@@ -127,6 +130,29 @@ class Bluecorp(commands.Cog):
         if(ctx.author.id != self.bot.application.owner.id):
             return
         await ctx.send(message)
+    
+    @commands.command()
+    @commands.guild_only()
+    async def rules(self, ctx: commands.Context):
+        path = f"{os.getcwd()}/settings/{ctx.guild.id}.yaml"
+        if(os.path.exists(path)):
+            with open(path, "r") as f:
+                contents: dict = list(yaml.load_all(f, Loader=yaml.SafeLoader))[0].get("rules")
+                if(contents):
+                    text = contents.get("text")
+                    view = discord.ui.View(timeout=None)
+                    buttons: dict|None = contents.get("buttons")
+                    if(buttons):
+                        for key in buttons.keys():
+                            button = buttons[key]
+                            style = getattr(discord.ButtonStyle, button["style"])
+                            if(button["type"] == "url"):
+                                view.add_item(discord.ui.Button(label=button.get("label"), style=style, url=button["value"]))
+                            else:
+                                view.add_item(discord.ui.Button(label=button.get("label"), style=style, emoji=button.get("emoji"), custom_id=f"{button['type']}.{button['value']}"))
+                    await ctx.send(text, view=view)
+        else:
+            self.logger.info("Failed to find file")
 
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
