@@ -3,9 +3,12 @@ import discord
 import ast
 import re
 import os
+import os
 
 from discord import app_commands
 from discord.ext import commands, tasks
+
+import yaml
 
 import yaml
 
@@ -134,7 +137,7 @@ class Bluecorp(commands.Cog):
     @commands.command()
     @commands.guild_only()
     async def rules(self, ctx: commands.Context):
-        path = f"{os.getcwd()}/settings/{ctx.guild.id}.yaml"
+        path = f"{os.getcwd()}/settings/{ctx.guild.id}.{ctx.channel.id}.yaml"
         if(os.path.exists(path)):
             with open(path, "r") as f:
                 contents: dict = list(yaml.load_all(f, Loader=yaml.SafeLoader))[0].get("rules")
