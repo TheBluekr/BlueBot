@@ -117,7 +117,7 @@ class Buttons(commands.Cog):
     @commands.guild_only()
     @commands.command()
     async def sync(self, ctx: commands.Context):
-        self.tree.copy_global_to(guild=ctx.guild)
+        self.bot.tree.copy_global_to(guild=ctx.guild)
         fmt = await self.bot.tree.sync(guild=ctx.guild)
         await ctx.send(f"Synced {len(fmt)} commands for guild")
     
