@@ -246,3 +246,5 @@ ModelManifest.xml
 
 # Python files
 *.pyc
+
+settings/
