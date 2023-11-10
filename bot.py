@@ -34,8 +34,6 @@ class Bot(commands.Bot):
         self.db = Database()
 
         self.embed = EmbedColor(self)
-        
-        self.git = Git(self)
 
         os.makedirs(f"{os.getcwd()}/settings", exist_ok=True)
     
@@ -59,7 +57,6 @@ class Bot(commands.Bot):
     @commands.Cog.listener()
     async def on_ready(self):
         self.logger.info(f"Logged in as {self.user.name}")
-        self.git.update_code.start()
         guild = discord.Object(id=138365437791567872)
         self.tree.copy_global_to(guild=guild)
         fmt = await self.tree.sync(guild=guild)
