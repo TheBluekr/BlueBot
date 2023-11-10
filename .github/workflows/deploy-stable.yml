@@ -3,6 +3,9 @@ on:
   push:
     branches:
       - Stable
+  pull_request:
+    branches:
+      - Stable
   workflow_dispatch:
     branches:
       - Stable
