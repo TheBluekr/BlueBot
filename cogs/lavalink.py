@@ -104,7 +104,7 @@ class Lavalink(commands.Cog):
         embed = self.embed.create_embed(interaction.user)
 
         if(url):
-            tracks = await wavelink.NodePool.get_tracks(url, wavelink.YouTubeTrack)
+            tracks = await wavelink.NodePool.get_tracks(url, cls=wavelink.YouTubeTrack)
             if(not tracks):
                 embed.description = f"Could not find tracks with url: `{url}`"
                 return await interaction.response.send_message(embed=embed)
@@ -137,12 +137,12 @@ class Lavalink(commands.Cog):
         else:
             vc: wavelink.Player = interaction.guild.voice_client
 
-        tracks = await wavelink.NodePool.get_tracks(url, wavelink.YouTubeTrack)
+        tracks = await wavelink.NodePool.get_tracks(url, cls=wavelink.YouTubeTrack)
         if(not tracks):
            embed.description = f"Could not find tracks with url: `{url}`"
            return await interaction.response.send_message(embed=embed)
 
-        track = Track(tracks[0].id, tracks[0].info, requester=interaction.user)
+        track = Track(interaction.user, tracks[0])
 
         embed.description = f"**Added**:\n**[{track.title}](https://www.youtube.com/watch?v={track.identifier} '{track.identifier}')**"
         embed.set_footer(text=f"Requested by: {track.requester}", icon_url=track.requester.avatar.url)
@@ -159,7 +159,7 @@ class Lavalink(commands.Cog):
     @check_voice_user()
     @music.command()
     async def search(self, interaction: discord.Interaction, query: str):
-        tracks = await wavelink.NodePool.get_tracks(query, wavelink.YouTubeTrack)
+        tracks = await wavelink.NodePool.get_tracks(query, cls=wavelink.YouTubeTrack)
 
         embed = self.embed.create_embed(interaction.user)
 
@@ -259,9 +259,19 @@ class Lavalink(commands.Cog):
     async def skip(self, interaction: discord.Interaction):
         """Skips the current playing song.
         """
+        embed = self.embed.create_embed(interaction.user)
+
+        if not interaction.guild.voice_client:
+            embed.description = "Not connected to voice"
+            return await interaction.response.send_message(embed=embed)
+        
         vc: wavelink.Player = interaction.guild.voice_client
 
         await vc.stop(force=True)
+
+        embed.description = "Skipped current song"
+
+        await interaction.response.send_message(embed=embed)
     
     @commands.guild_only()
     @check_voice_user()
@@ -287,8 +297,18 @@ class Lavalink(commands.Cog):
     @music.command(description="Sets the current position in the track to the specified time")
     async def set(self, interaction: discord.Interaction, position: float):
         """Sets the current playback to the specified time (in seconds)"""
+        embed = self.embed.create_embed(interaction.user)
+
+        if not interaction.guild.voice_client:
+            embed.description = "Not connected to voice"
+            return await interaction.response.send_message(embed=embed)
+        
         vc: wavelink.Player = interaction.guild.voice_client
         await vc.seek(round(position*1000.0))
+
+        embed.description = f"Set playback to {position}s"
+
+        await interaction.response.send_message(embed=embed)
     
     @commands.guild_only()
     @check_voice_user()
