@@ -1,8 +1,11 @@
+import asyncio
 import discord
 from discord.ext import commands
 import os
 import logging
 from core import Database, EmbedColor
+import signal
+from contextlib import suppress
 
 ch = logging.StreamHandler()
 ch.setLevel(logging.INFO)
@@ -48,6 +51,11 @@ class Bot(commands.Bot):
                     raise e
         
         self.logger.info("Finished loading all cogs")
+
+        with suppress(NotImplementedError):
+            for signame in ('SIGINT', 'SIGTERM'):
+                self.loop.add_signal_handler(getattr(signal, signame), lambda: asyncio.create_task(self.close()))
+
         return await super().setup_hook()
     
     async def shutdown(self):
