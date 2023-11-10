@@ -89,6 +89,13 @@ class Lavalink(commands.Cog):
                 return False
             return True
         return app_commands.check(predicate)
+    
+    def check_user_perms():
+        async def predicate(interaction: discord.Interaction):
+            if not interaction.user.guild_permissions.administrator:
+                return False
+            return True
+        return app_commands.check(predicate)
 
     @app_commands.guild_only()
     @check_voice_user()
@@ -109,7 +116,7 @@ class Lavalink(commands.Cog):
                 embed.description = f"Could not find tracks with url: `{url}`"
                 return await interaction.response.send_message(embed=embed)
             else:
-                track = Track(tracks[0].id, tracks[0].info, requester=interaction.user)
+                track = Track(interaction.user, tracks[0])
 
                 embed.description = f"**Added**:\n**[{track.title}](https://www.youtube.com/watch?v={track.identifier} '{track.identifier}')**"
                 embed.set_footer(text=f"Requested by: {track.requester}", icon_url=track.requester.avatar.url)
@@ -207,6 +214,7 @@ class Lavalink(commands.Cog):
     @app_commands.guild_only()
     @check_voice_user()
     @check_voiceclient()
+    @check_user_perms()
     @music.command(description="Pause the current player")
     async def pause(self, interaction: discord.Interaction):
         """Pauses the music player.
@@ -221,6 +229,7 @@ class Lavalink(commands.Cog):
     @app_commands.guild_only()
     @check_voice_user()
     @check_voiceclient()
+    @check_user_perms()
     @music.command(description="Resumes the current player")
     async def resume(self, interaction: discord.Interaction):
         """Unpauses the music player.
@@ -234,9 +243,11 @@ class Lavalink(commands.Cog):
     
     @app_commands.guild_only()
     @check_voice_user()
+    @check_user_perms()
     @music.command(description="Stops the current player and disconnects from voice")
     async def stop(self, interaction: discord.Interaction):
-        """Stops playing music and disconnects the bot from the voice channel."""
+        """Stops playing music and disconnects the bot from the voice channel.
+        """
         embed = self.embed.create_embed(interaction.user)
 
         if not interaction.guild.voice_client:
@@ -255,6 +266,7 @@ class Lavalink(commands.Cog):
     @app_commands.guild_only()
     @check_voice_user()
     @check_voiceclient()
+    @check_user_perms()
     @music.command(description="Skips the current song")
     async def skip(self, interaction: discord.Interaction):
         """Skips the current playing song.
@@ -276,6 +288,7 @@ class Lavalink(commands.Cog):
     @commands.guild_only()
     @check_voice_user()
     @check_voiceclient()
+    @check_user_perms()
     @app_commands.describe(volume="Volume level (Default: 1.0)")
     @music.command(description="Changes the volume of the player")
     async def volume(self, interaction: discord.Interaction, volume: app_commands.Range[float, 0.0, 20.0]=None):
@@ -293,6 +306,7 @@ class Lavalink(commands.Cog):
     @commands.guild_only()
     @check_voice_user()
     @check_voiceclient()
+    @check_user_perms()
     @app_commands.describe(position="Time to set to (in seconds)")
     @music.command(description="Sets the current position in the track to the specified time")
     async def set(self, interaction: discord.Interaction, position: float):
@@ -313,6 +327,7 @@ class Lavalink(commands.Cog):
     @commands.guild_only()
     @check_voice_user()
     @check_voiceclient()
+    @check_user_perms()
     @app_commands.describe(loop="Bool whether to loop")
     @music.command(description="Toggle whether the current song should loop")
     async def loop(self, interaction: discord.Interaction, loop: bool):
@@ -340,6 +355,28 @@ class Lavalink(commands.Cog):
                 end = float(segment.end)
         filter_segments.append([start, end])
         return filter_segments
+
+    @app_commands.guild_only()
+    @check_voiceclient()
+    @music.command()
+    async def queue(self, interaction: discord.Interaction):
+        """Return queue for voice player"""
+        vc: wavelink.Player = interaction.guild.voice_client
+
+        embed = self.embed.create_embed(interaction.user)
+        
+        if(vc.current):
+            embed.description = f"**Currently playing**:\n**[{vc.current.title}](https://www.youtube.com/watch?v={vc.current.identifier} '{vc.current.identifier}')**\n"
+        
+        if(vc.queue.count > 0):
+            embed.description += "\n**Next up**:"
+            for index, track in enumerate(vc.queue):
+                if(index > 5):
+                    embed.description += f"\nAnd {vc.queue.count-5} more"
+                    break
+                embed.description += f"\n**[{track.title}](https://www.youtube.com/watch?v={track.identifier} '{track.identifier}')**"
+
+        await interaction.response.send_message(embed=embed)
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(Lavalink(bot))

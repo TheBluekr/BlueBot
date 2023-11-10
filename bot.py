@@ -1,8 +1,11 @@
+import asyncio
 import discord
 from discord.ext import commands
 import os
 import logging
-from core import Database, EmbedColor, Git
+from core import Database, EmbedColor
+import signal
+from contextlib import suppress
 
 ch = logging.StreamHandler()
 ch.setLevel(logging.INFO)
@@ -34,8 +37,6 @@ class Bot(commands.Bot):
         self.db = Database()
 
         self.embed = EmbedColor(self)
-        
-        self.git = Git(self)
 
         os.makedirs(f"{os.getcwd()}/settings", exist_ok=True)
     
@@ -50,6 +51,11 @@ class Bot(commands.Bot):
                     raise e
         
         self.logger.info("Finished loading all cogs")
+
+        with suppress(NotImplementedError):
+            for signame in ('SIGINT', 'SIGTERM'):
+                self.loop.add_signal_handler(getattr(signal, signame), lambda: asyncio.create_task(self.close()))
+
         return await super().setup_hook()
     
     async def shutdown(self):
@@ -59,7 +65,6 @@ class Bot(commands.Bot):
     @commands.Cog.listener()
     async def on_ready(self):
         self.logger.info(f"Logged in as {self.user.name}")
-        self.git.update_code.start()
         guild = discord.Object(id=138365437791567872)
         self.tree.copy_global_to(guild=guild)
         fmt = await self.tree.sync(guild=guild)
