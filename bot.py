@@ -2,7 +2,7 @@ import discord
 from discord.ext import commands
 import os
 import logging
-from core import Database, EmbedColor, Git
+from core import Database, EmbedColor
 
 ch = logging.StreamHandler()
 ch.setLevel(logging.INFO)
