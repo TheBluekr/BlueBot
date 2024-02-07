@@ -18,13 +18,6 @@ logger = logging.getLogger(__cogname__)
 waveLogger = logging.getLogger('wavelink')
 waveLogger.setLevel(logging.WARNING)
 
-class Track(wavelink.YouTubeTrack):
-    __slots__ = ("requester", )
-
-    def __init__(self, requester: discord.Member, cls: wavelink.YouTubeTrack):
-        super().__init__(cls.data)
-        self.requester = requester
-
 class Lavalink(commands.Cog):
     """Music cog to hold Wavelink related commands and listeners."""
 
@@ -41,44 +34,57 @@ class Lavalink(commands.Cog):
     async def post_init(self):
         await self.bot.wait_until_ready()
 
-        node: wavelink.Node = wavelink.Node(uri='http://lavalink:2333', password='youshallnotpass')
-        await wavelink.NodePool.connect(client=self.bot, nodes=[node])
+        try:
+            node: wavelink.Node = wavelink.Node(uri='http://lavalink:2333', password='youshallnotpass')
+            await wavelink.Pool.connect(nodes=[node], client=self.bot)
+        except Exception as e:
+            if hasattr(e, 'message'):
+                self.logger.error(e.message)
+            else:
+                self.logger.error(e)
+            await self.bot.remove_cog(__class__.__name__)
     
     @commands.Cog.listener()
-    async def on_wavelink_node_ready(self, node: wavelink.Node):
+    async def on_wavelink_node_ready(self, payload: wavelink.NodeReadyEventPayload):
         """Event fired when a node has finished connecting."""
-        self.logger.info(f'Node: <{node.id}> is ready!')
+        self.logger.info(f'Node: <{payload.node.identifier}> is ready!')
     
     @commands.Cog.listener()
-    async def on_wavelink_track_start(self, payload: wavelink.TrackEventPayload):
+    async def on_wavelink_track_start(self, payload: wavelink.TrackStartEventPayload):
         player: wavelink.Player = payload.player
         queue: wavelink.Queue = player.queue
-        curr: Track = player.current
+        curr: wavelink.Playable = player.current
 
-        embed = self.embed.create_embed(curr.requester)
-        embed.description = f"**Started playing**:\n**[{curr.title}](https://www.youtube.com/watch?v={curr.identifier} '{curr.identifier}')**"
-        if(queue.loop):
+        requester = self.bot.get_user(curr.extras.requester_id)
+
+        embed: discord.Embed = self.embed.create_embed(requester)
+        #if(curr.source == "youtube"):
+            #url = "https://www.youtube.com/watch?v="
+        embed.description = f"**Started playing**:\n**[{curr.title}]({curr.uri} '{curr.identifier}')**"
+        if(queue.mode == wavelink.QueueMode.loop):
             embed.description += " (looped)"
-        embed.set_footer(text=f"Requested by: {curr.requester}", icon_url=curr.requester.avatar.url)
+        embed.set_footer(text=f"Requested by: {requester}", icon_url=requester.avatar.url)
         
         await player.channel.send(embed=embed)
 
         try:
             skips = self.process_sponsorblock(self.sbClient.get_skip_segments(curr.identifier))
+            skips = []
             while skips:
-                if(player.position/1000.0 > skips[0][0]):
-                   await player.seek(skips[0][1]*1000.0)
+                if(float(player.position/1000) > skips[0][0]):
+                   await player.seek(int(skips[0][1]*1000.0))
                    del skips[0]
                 await asyncio.sleep(0.5)
         except sponsorblock.errors.NotFoundException:
             pass
     
     @commands.Cog.listener()
-    async def on_wavelink_track_end(self, payload: wavelink.TrackEventPayload):
+    async def on_wavelink_track_end(self, payload: wavelink.TrackEndEventPayload):
         player: wavelink.Player = payload.player
         queue: wavelink.Queue = player.queue
 
-        if(queue.is_empty):
+        if(len(queue) == 0):
+            player.cleanup()
             await player.disconnect()
 
     music = app_commands.Group(name="music", description="Commands for playing music")
@@ -103,33 +109,37 @@ class Lavalink(commands.Cog):
     async def play(self, interaction: discord.Interaction, url: str=None):
         """Play a song with the given search query. (Also accepts a song after invoke to add to the queue)
         """
+        embed: discord.Embed = self.embed.create_embed(interaction.user)
+
         if(not interaction.guild.voice_client):
             vc: wavelink.Player = await interaction.user.voice.channel.connect(cls=wavelink.Player)
         else:
             vc: wavelink.Player = interaction.guild.voice_client
-        
-        embed = self.embed.create_embed(interaction.user)
 
         if(url):
-            tracks = await wavelink.NodePool.get_tracks(url, cls=wavelink.YouTubeTrack)
+            tracks: wavelink.Search = await wavelink.Playable.search(url)
             if(not tracks):
                 embed.description = f"Could not find tracks with url: `{url}`"
                 return await interaction.response.send_message(embed=embed)
+            
+            if isinstance(tracks, wavelink.Playlist):
+                embed.description = f"Playlist support hasn't been added yet"
+                return await interaction.response.send_message(embed=embed)
             else:
-                track = Track(interaction.user, tracks[0])
+                track: wavelink.Playable = tracks[0]
+                track.extras = {"requester_id": interaction.user.id}
 
                 embed.description = f"**Added**:\n**[{track.title}](https://www.youtube.com/watch?v={track.identifier} '{track.identifier}')**"
-                embed.set_footer(text=f"Requested by: {track.requester}", icon_url=track.requester.avatar.url)
+                embed.set_footer(text=f"Requested by: {interaction.user}", icon_url=interaction.user.avatar.url)
                 await interaction.response.send_message(embed=embed)
 
-                if(vc.is_playing()):
-                    await vc.queue.put_wait(track)
-                else:
-                    await vc.play(track)
+                await vc.queue.put_wait(track)
         else:
-            embed.description = "Started playing"
-            await interaction.response.send_message(embed=embed)
-        vc.autoplay = True
+            await interaction.response.defer(thinking=False)
+        if not vc.playing:
+            # Play now since we aren't playing anything...
+            await vc.play(vc.queue.get(), volume=40)
+            vc.autoplay = wavelink.AutoPlayMode.partial
 
     @app_commands.guild_only()
     @check_voice_user()
@@ -137,68 +147,89 @@ class Lavalink(commands.Cog):
     async def add(self, interaction: discord.Interaction, url: str):
         """Add a song with the given search query. (Also accepts a song after invoke to add to the queue)
         """
-        embed = self.embed.create_embed(interaction.user)
+        embed: discord.Embed = self.embed.create_embed(interaction.user)
 
         if(not interaction.guild.voice_client):
             vc: wavelink.Player = await interaction.user.voice.channel.connect(cls=wavelink.Player)
         else:
             vc: wavelink.Player = interaction.guild.voice_client
 
-        tracks = await wavelink.NodePool.get_tracks(url, cls=wavelink.YouTubeTrack)
+        tracks: wavelink.Search = await wavelink.Playable.search(url)
+
         if(not tracks):
-           embed.description = f"Could not find tracks with url: `{url}`"
-           return await interaction.response.send_message(embed=embed)
-
-        track = Track(interaction.user, tracks[0])
-
-        embed.description = f"**Added**:\n**[{track.title}](https://www.youtube.com/watch?v={track.identifier} '{track.identifier}')**"
-        embed.set_footer(text=f"Requested by: {track.requester}", icon_url=track.requester.avatar.url)
-        await interaction.response.send_message(embed=embed)
-
-        if(vc.is_playing()):
-            await vc.queue.put_wait(track)
+            embed.description = f"Could not find tracks with url: `{url}`"
+            return await interaction.response.send_message(embed=embed)
+        
+        if isinstance(tracks, wavelink.Playlist):
+            embed.description = f"Playlist support hasn't been added yet"
+            return await interaction.response.send_message(embed=embed)
         else:
-            await vc.play(track)
+            track: wavelink.Playable = tracks[0]
+            track.extras = {"requester_id": interaction.user.id}
+            
+            embed.description = f"**Added**:\n**[{track.title}]({track.uri} '{track.identifier}')**"
+            embed.set_footer(text=f"Requested by: {interaction.user}", icon_url=interaction.user.avatar.url)
+            await interaction.response.send_message(embed=embed)
+            await vc.queue.put_wait(track)
 
-        vc.autoplay = True
+        if(not vc.playing):
+            await vc.play(vc.queue.get(), volume=40)
+
+            vc.autoplay = wavelink.AutoPlayMode.partial
 
     @app_commands.guild_only()
     @check_voice_user()
     @music.command()
-    async def search(self, interaction: discord.Interaction, query: str):
-        tracks = await wavelink.NodePool.get_tracks(query, cls=wavelink.YouTubeTrack)
+    @app_commands.choices(source=[
+        app_commands.Choice(name="YouTube", value="YouTube"),
+        #app_commands.Choice(name="YouTube Music", value="YouTubeMusic"),
+        #app_commands.Choice(name="SoundCloud", value="SoundCloud"),
+        #app_commands.Choice(name="Spotify", value="spsearch"),
+        ])
+    async def search(self, interaction: discord.Interaction, source: app_commands.Choice[str], query: str):
+        embed: discord.Embed = self.embed.create_embed(interaction.user)
 
-        embed = self.embed.create_embed(interaction.user)
-
-        if(not tracks):
-            embed.description = f"Could not find tracks with query: `{query}`"
-            return await interaction.response.send_message(embed=embed)
-        track = Track(interaction.user, tracks[0])
-
-        if not interaction.guild.voice_client:
+        if(not interaction.guild.voice_client):
             vc: wavelink.Player = await interaction.user.voice.channel.connect(cls=wavelink.Player)
         else:
             vc: wavelink.Player = interaction.guild.voice_client
 
-        embed.description = f"**Added**:\n**[{track.title}](https://www.youtube.com/watch?v={track.identifier} '{track.identifier}')**"
+        #if(source.value.endswith("search")):
+            #tracks: list[wavelink.Playable] = await wavelink.Playable.search(query, source=source.value)
+            #self.logger.info(f"Searched spotify track with {query}")
+        #else:
+            #tracks: list[wavelink.Playable] = await wavelink.Playable.search(f"{query}", source=getattr(wavelink.TrackSource, source.value))
+        tracks: list[wavelink.Playable] = await wavelink.Playable.search(query)
+        
+        if(not tracks):
+            embed.description = f"Could not find tracks with url: `{query}`"
+            return await interaction.response.send_message(embed=embed)
+        
+        track = tracks[0]
+        track.extras = {"requester_id": interaction.user.id}
+            
+        embed.description = f"**Added**:\n**[{track.title}]({track.uri} '{track.identifier}')**"
         embed.set_footer(text=f"Requested by: {interaction.user}", icon_url=interaction.user.avatar.url)
         await interaction.response.send_message(embed=embed)
+        await vc.queue.put_wait(track)
+        
+        if(not vc.playing):
+            await vc.play(vc.queue.get(), volume=40)
 
-        if(vc.is_playing()):
-            await vc.queue.put_wait(track)
-        else:
-            await vc.play(track)
+            vc.autoplay = wavelink.AutoPlayMode.partial
 
-        vc.autoplay = True
-    
     @search.autocomplete("query")
-    async def search_autocomplete(self, interaction: discord.Interaction, current: str) -> typing.List[app_commands.Choice[str]]:
-        tracks: list[wavelink.YouTubeTrack] = await wavelink.YouTubeTrack.search(current)
+    async def query_autocomplete(self, interaction: discord.Interaction, current: str) -> typing.List[app_commands.Choice[str]]:
+        if(interaction.namespace.source.endswith("search")):
+            tracks: list[wavelink.Playable] = await wavelink.Playable.search(f"{current}", source=interaction.namespace.source)
+        else:
+            tracks: list[wavelink.Playable] = await wavelink.Playable.search(f"{current}", source=getattr(wavelink.TrackSource, interaction.namespace.source))
         choices = list()
 
+        tracks = tracks[:5]
         for track in tracks:
-            choices.append(app_commands.Choice(name=track.title, value=track.identifier))
-
+            if(track.uri):
+                choices.append(app_commands.Choice(name=f"{track.author} - {track.title}", value=track.uri))
         return choices
     
     def check_voiceclient():
