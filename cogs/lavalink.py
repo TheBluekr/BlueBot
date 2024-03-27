@@ -24,16 +24,13 @@ class Lavalink(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
         self.logger = logger
+        self.logger.info(f"Loaded cog {__cogname__}")
 
         self.embed = self.bot.embed
 
-        self.bot.loop.create_task(self.post_init())
-
         self.sbClient = sponsorblock.Client()
 
-    async def post_init(self):
-        await self.bot.wait_until_ready()
-
+    async def cog_load(self):
         try:
             node: wavelink.Node = wavelink.Node(uri='http://lavalink:2333', password='youshallnotpass')
             await wavelink.Pool.connect(nodes=[node], client=self.bot)
@@ -220,11 +217,13 @@ class Lavalink(commands.Cog):
 
     @search.autocomplete("query")
     async def query_autocomplete(self, interaction: discord.Interaction, current: str) -> typing.List[app_commands.Choice[str]]:
-        if(interaction.namespace.source.endswith("search")):
-            tracks: list[wavelink.Playable] = await wavelink.Playable.search(f"{current}", source=interaction.namespace.source)
-        else:
-            tracks: list[wavelink.Playable] = await wavelink.Playable.search(f"{current}", source=getattr(wavelink.TrackSource, interaction.namespace.source))
         choices = list()
+        if(current == ""):
+            return choices
+        if(interaction.namespace.source.endswith("search")):
+            tracks: list[wavelink.Playable] = await wavelink.Playable.search(f"{current}") #, source=interaction.namespace.source)
+        else:
+            tracks: list[wavelink.Playable] = await wavelink.Playable.search(f"{current}") #, source=getattr(wavelink.TrackSource, interaction.namespace.source))
 
         tracks = tracks[:5]
         for track in tracks:
@@ -237,7 +236,7 @@ class Lavalink(commands.Cog):
             if not interaction.guild.voice_client:
                 return False
             vc: wavelink.Player = interaction.guild.voice_client
-            if(not vc.is_playing()):
+            if(not vc.playing):
                 return False
             return True
         return app_commands.check(predicate)
